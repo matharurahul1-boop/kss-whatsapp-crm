@@ -52,7 +52,7 @@ export async function applyDeliveryEvent(input: ApplyEventInput): Promise<{ appl
   // Never downgrade a terminal-forward status (read cannot revert to delivered, etc.)
   const rank: Record<NotificationStatus, number> = { QUEUED: 0, SENT: 1, DELIVERED: 2, READ: 3, FAILED: 4 };
   const nextStatus = STATUS_MAP[input.eventType];
-  const shouldUpdate = rank[nextStatus] >= rank[notification.status] || nextStatus === "FAILED";
+  const shouldUpdate = rank[nextStatus] >= rank[notification.status as NotificationStatus] || nextStatus === "FAILED";
 
   await prisma.$transaction(async (tx: PrismaTx) => {
     await tx.webhookEvent.create({

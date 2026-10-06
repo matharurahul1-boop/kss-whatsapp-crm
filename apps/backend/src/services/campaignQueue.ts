@@ -1,11 +1,30 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { getWhatsAppService } from "./whatsapp";
 import { scheduleMockDeliveryProgression } from "./messageSimulator";
 import { renderTemplateBody } from "../utils/template";
 import { recordOutboundMessage } from "./conversationService";
 
-type RecipientWithContact = Prisma.CampaignRecipientGetPayload<{ include: { contact: true } }>;
+type RecipientWithContact = {
+  id: string;
+  campaignId: string;
+  contactId: string;
+  status: string;
+  variables: unknown;
+  failReason: string | null;
+  messageId: string | null;
+  processedAt: Date | null;
+  createdAt: Date;
+  contact: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    source: string;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+};
 
 const BATCH_SIZE = 5;
 const BATCH_INTERVAL_MS = 400;
