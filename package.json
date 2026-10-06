@@ -1,0 +1,22 @@
+{
+  "name": "kss-whatsapp-notifications",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "build": "npm run build -w apps/backend && npm run build -w apps/frontend",
+    "typecheck": "npm run typecheck -w apps/backend && npm run typecheck -w apps/frontend",
+    "test": "npm run test -w apps/backend",
+    "prisma:generate": "npm run prisma:generate -w apps/backend",
+    "prisma:migrate": "npm run prisma:migrate -w apps/backend",
+    "seed": "npm run seed -w apps/backend",
+    "docker:up": "docker compose up -d"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

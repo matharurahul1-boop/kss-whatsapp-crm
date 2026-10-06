@@ -1,0 +1,372 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+}
+
+enum WhatsAppConnectionStatus {
+  NOT_CONNECTED
+  CONNECTED
+  ERROR
+}
+
+enum TemplateStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  DISABLED
+}
+
+enum TemplateCategory {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+}
+
+enum HeaderType {
+  NONE
+  TEXT
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum ButtonType {
+  QUICK_REPLY
+  WEBSITE
+  PHONE
+}
+
+enum ContactSource {
+  MANUAL
+  CRM_API
+  EXHIBITION
+  WEBSITE
+  IMPORT
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CampaignAudienceType {
+  ALL
+  TAGS
+  IMPORTED_LIST
+  MANUAL_SELECTION
+}
+
+enum RecipientStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  SKIPPED
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum NotificationChannel {
+  SINGLE
+  CAMPAIGN
+  API
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  campaigns  Campaign[]
+  apiKeys    ApiKey[]
+  auditLogs  AuditLog[]
+
+  @@index([email])
+}
+
+model WhatsAppAccount {
+  id                  String                   @id @default(cuid())
+  status              WhatsAppConnectionStatus @default(NOT_CONNECTED)
+  businessName        String?
+  wabaId              String?
+  phoneNumberId       String?
+  displayPhoneNumber  String?
+  qualityRating       String?
+  lastConnectedAt     DateTime?
+  lastTestedAt         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+}
+
+model MetaConfig {
+  id                     String   @id @default(cuid())
+  appId                  String?
+  appSecretMasked        String?
+  appSecretHash          String?
+  wabaId                 String?
+  phoneNumberId          String?
+  accessTokenMasked      String?
+  accessTokenHash        String?
+  webhookVerifyToken     String?
+  mode                   String   @default("mock")
+  updatedAt              DateTime @updatedAt
+  createdAt              DateTime @default(now())
+}
+
+model WhatsAppTemplate {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  category        TemplateCategory
+  language        String           @default("en_US")
+  status          TemplateStatus   @default(DRAFT)
+  headerType      HeaderType       @default(NONE)
+  headerContent   String?
+  body            String
+  footer          String?
+  buttons         Json?
+  rejectionReason String?
+  variableCount   Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  campaigns     Campaign[]
+  notifications Notification[]
+
+  @@index([status])
+  @@index([category])
+}
+
+model ContactTag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  contacts  Contact[] @relation("ContactToTag")
+}
+
+model Contact {
+  id        String        @id @default(cuid())
+  name      String
+  phone     String        @unique
+  email     String?
+  source    ContactSource @default(MANUAL)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  tags               ContactTag[]         @relation("ContactToTag")
+  campaignRecipients CampaignRecipient[]
+  notifications      Notification[]
+  conversations      Conversation[]
+
+  @@index([phone])
+  @@index([source])
+}
+
+model Campaign {
+  id             String               @id @default(cuid())
+  name           String
+  description    String?
+  status         CampaignStatus       @default(DRAFT)
+  audienceType   CampaignAudienceType @default(ALL)
+  audienceFilter Json?
+  templateId     String
+  template       WhatsAppTemplate     @relation(fields: [templateId], references: [id])
+  variableMap    Json?
+  totalRecipients   Int  @default(0)
+  sentCount         Int  @default(0)
+  deliveredCount    Int  @default(0)
+  readCount         Int  @default(0)
+  failedCount       Int  @default(0)
+  createdById    String?
+  createdBy      User?                @relation(fields: [createdById], references: [id])
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  recipients    CampaignRecipient[]
+  notifications Notification[]
+
+  @@index([status])
+}
+
+model CampaignRecipient {
+  id          String          @id @default(cuid())
+  campaignId  String
+  campaign    Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact         @relation(fields: [contactId], references: [id])
+  status      RecipientStatus @default(PENDING)
+  variables   Json?
+  failReason  String?
+  messageId   String?
+  processedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+}
+
+model Notification {
+  id            String              @id @default(cuid())
+  contactId     String?
+  contact       Contact?            @relation(fields: [contactId], references: [id])
+  phone         String
+  templateId    String?
+  template      WhatsAppTemplate?   @relation(fields: [templateId], references: [id])
+  campaignId    String?
+  campaign      Campaign?           @relation(fields: [campaignId], references: [id])
+  channel       NotificationChannel @default(SINGLE)
+  status        NotificationStatus  @default(QUEUED)
+  messageId     String?             @unique
+  variables     Json?
+  failReason    String?
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  readAt        DateTime?
+  failedAt      DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([status])
+  @@index([phone])
+  @@index([createdAt])
+  @@index([messageId])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyPrefix   String
+  keyHash     String    @unique
+  enabled     Boolean   @default(true)
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id])
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@index([keyPrefix])
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  TEMPLATE
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  STICKER
+  UNKNOWN
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  phone           String    @unique
+  contactId       String?
+  contact         Contact?  @relation(fields: [contactId], references: [id])
+  lastMessageAt   DateTime  @default(now())
+  windowExpiresAt DateTime?
+  unreadCount     Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  messages Message[]
+
+  @@index([lastMessageAt])
+  @@index([phone])
+}
+
+model Message {
+  id             String            @id @default(cuid())
+  conversationId String
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  type           MessageType       @default(TEXT)
+  body           String?
+  mediaUrl       String?
+  mediaType      String?
+  templateName   String?
+  waMessageId    String?           @unique
+  status         MessageStatus     @default(SENT)
+  failReason     String?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  failedAt       DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  replyToId      String?
+  replyTo        Message?          @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]         @relation("MessageReply")
+
+  @@index([conversationId, createdAt])
+  @@index([waMessageId])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  eventKey    String   @unique
+  provider    String   @default("meta")
+  eventType   String
+  payload     Json
+  processedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
