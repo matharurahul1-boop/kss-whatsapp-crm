@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build -w apps/frontend && npx prisma generate --schema=apps/backend/prisma/schema.prisma",
+  "outputDirectory": "apps/frontend/dist",
+  "installCommand": "npm install",
+  "functions": {
+    "apps/backend/api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/apps/backend/api/index.ts"
+    },
+    {
+      "source": "/webhook/:path*",
+      "destination": "/apps/backend/api/index.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
