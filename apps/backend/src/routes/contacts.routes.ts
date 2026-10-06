@@ -158,7 +158,7 @@ router.post(
     const invalid: { row: unknown; reason: string }[] = [];
     const duplicates: { row: unknown; reason: string }[] = [];
 
-    const existingPhones = new Set((await prisma.contact.findMany({ select: { phone: true } })).map((c) => c.phone));
+    const existingPhones = new Set((await prisma.contact.findMany({ select: { phone: true } })).map((c: { phone: string }) => c.phone));
 
     for (const row of rows) {
       const phone = normalizePhone(row.phone);

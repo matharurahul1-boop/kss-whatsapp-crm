@@ -1,8 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { getWhatsAppService } from "./whatsapp";
 import { scheduleMockDeliveryProgression } from "./messageSimulator";
 import { renderTemplateBody } from "../utils/template";
 import { recordOutboundMessage } from "./conversationService";
+
+type RecipientWithContact = Prisma.CampaignRecipientGetPayload<{ include: { contact: true } }>;
 
 const BATCH_SIZE = 5;
 const BATCH_INTERVAL_MS = 400;
@@ -71,7 +74,7 @@ async function runCampaign(campaignId: string): Promise<void> {
     if (fresh?.status === "CANCELLED") return;
 
     await Promise.all(
-      batch.map(async (recipient) => {
+      batch.map(async (recipient: RecipientWithContact) => {
         processedAny = true;
         const variables: Record<string, string> = {};
         for (const [key, field] of Object.entries(variableMap)) {

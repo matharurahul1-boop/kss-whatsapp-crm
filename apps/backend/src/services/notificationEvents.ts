@@ -1,5 +1,7 @@
-import { NotificationStatus, RecipientStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+
+type NotificationStatus = "QUEUED" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+type RecipientStatus = "PENDING" | "QUEUED" | "SENT" | "DELIVERED" | "READ" | "FAILED" | "SKIPPED";
 
 export type DeliveryEventType = "sent" | "delivered" | "read" | "failed";
 
@@ -52,7 +54,7 @@ export async function applyDeliveryEvent(input: ApplyEventInput): Promise<{ appl
   const nextStatus = STATUS_MAP[input.eventType];
   const shouldUpdate = rank[nextStatus] >= rank[notification.status] || nextStatus === "FAILED";
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: PrismaTx) => {
     await tx.webhookEvent.create({
       data: {
         eventKey: input.eventKey,
@@ -85,8 +87,10 @@ export async function applyDeliveryEvent(input: ApplyEventInput): Promise<{ appl
   return { applied: shouldUpdate };
 }
 
+type PrismaTx = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+
 async function updateCampaignCounters(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  tx: PrismaTx,
   campaignId: string,
   contactId: string | null,
   eventType: DeliveryEventType,

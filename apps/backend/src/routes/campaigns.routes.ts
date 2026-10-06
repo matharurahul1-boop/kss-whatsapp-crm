@@ -86,7 +86,7 @@ router.post(
     if (template.status !== "APPROVED") throw new ApiError(400, "TEMPLATE_NOT_APPROVED", "Only approved templates can be used in campaigns");
 
     const contacts = await resolveAudienceContacts(input.audience);
-    const validContacts = contacts.filter((c) => isValidPhone(normalizePhone(c.phone)));
+    const validContacts = contacts.filter((c: { phone: string; id: string }) => isValidPhone(normalizePhone(c.phone)));
 
     if (validContacts.length === 0) throw new ApiError(400, "EMPTY_AUDIENCE", "No valid recipients matched the selected audience");
 
@@ -106,7 +106,7 @@ router.post(
     });
 
     await prisma.campaignRecipient.createMany({
-      data: validContacts.map((c) => ({ campaignId: campaign.id, contactId: c.id })),
+      data: validContacts.map((c: { id: string }) => ({ campaignId: campaign.id, contactId: c.id })),
     });
 
     await recordAudit({ userId: req.user?.userId, action: "CAMPAIGN_CREATED", description: `Campaign "${campaign.name}" created with ${validContacts.length} recipients` });
@@ -153,7 +153,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const audience = audienceSchema.parse(JSON.parse((req.query.audience as string) ?? "{}"));
     const contacts = await resolveAudienceContacts(audience);
-    const validCount = contacts.filter((c) => isValidPhone(normalizePhone(c.phone))).length;
+    const validCount = contacts.filter((c: { phone: string }) => isValidPhone(normalizePhone(c.phone))).length;
     res.json({ success: true, data: { total: contacts.length, valid: validCount, invalid: contacts.length - validCount } });
   })
 );

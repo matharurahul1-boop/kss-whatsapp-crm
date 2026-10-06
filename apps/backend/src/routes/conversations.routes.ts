@@ -143,7 +143,7 @@ router.post(
         waMessageId,
         status: "SENT",
         sentAt: new Date(),
-        replyToId: replyToId ?? null,
+        ...(replyToId ? { replyTo: { connect: { id: replyToId } } } : {}),
       },
     });
 
@@ -196,7 +196,7 @@ router.post(
         waMessageId,
         status: "SENT",
         sentAt: new Date(),
-        replyToId: replyToId ?? null,
+        ...(replyToId ? { replyTo: { connect: { id: replyToId } } } : {}),
       },
     });
 

@@ -22,9 +22,9 @@ router.get(
       success: true,
       data: {
         account,
-        templatesByStatus: templatesByStatus.map((t) => ({ status: t.status, count: t._count })),
-        notificationsByStatus: notificationsByStatus.map((n) => ({ status: n.status, count: n._count })),
-        campaignsByStatus: campaignsByStatus.map((c) => ({ status: c.status, count: c._count })),
+        templatesByStatus: templatesByStatus.map((t: { status: string; _count: number }) => ({ status: t.status, count: t._count })),
+        notificationsByStatus: notificationsByStatus.map((n: { status: string; _count: number }) => ({ status: n.status, count: n._count })),
+        campaignsByStatus: campaignsByStatus.map((c: { status: string; _count: number }) => ({ status: c.status, count: c._count })),
         recentCampaigns,
         recentNotifications,
       },

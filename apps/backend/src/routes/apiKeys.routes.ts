@@ -16,7 +16,7 @@ router.get(
     const keys = await prisma.apiKey.findMany({ orderBy: { createdAt: "desc" } });
     res.json({
       success: true,
-      data: keys.map((k) => ({
+      data: keys.map((k: { id: string; name: string; keyPrefix: string; enabled: boolean; lastUsedAt: Date | null; createdAt: Date; revokedAt: Date | null }) => ({
         id: k.id,
         name: k.name,
         keyPrefix: k.keyPrefix,

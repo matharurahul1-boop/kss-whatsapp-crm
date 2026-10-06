@@ -43,7 +43,7 @@ router.post(
     });
 
     await prisma.campaignRecipient.createMany({
-      data: contacts.map((c) => ({ campaignId: campaign.id, contactId: c.id })),
+      data: contacts.map((c: { id: string }) => ({ campaignId: campaign.id, contactId: c.id })),
     });
 
     if (input.autoStart && contacts.length > 0) {

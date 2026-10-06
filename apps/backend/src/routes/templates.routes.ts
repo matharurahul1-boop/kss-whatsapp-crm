@@ -257,7 +257,7 @@ router.post(
     const service = getWhatsAppService();
 
     const updates = await Promise.all(
-      pendingTemplates.map(async (template) => {
+      pendingTemplates.map(async (template: { id: string; name: string; category: string; language: string; body: string }) => {
         const result = await service.submitTemplate({
           name: template.name,
           category: template.category,
