@@ -93,9 +93,7 @@ function showPushNotification(title: string, body: string, icon?: string) {
   const n = new Notification(title, {
     body,
     icon: icon ?? "/favicon.ico",
-    badge: "/favicon.ico",
     tag: "kss-whatsapp",
-    renotify: true,
   });
   n.onclick = () => { window.focus(); n.close(); };
   setTimeout(() => n.close(), 8000);
