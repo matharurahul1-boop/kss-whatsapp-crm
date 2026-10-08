@@ -7,6 +7,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import { env } from "../config/env";
+import { supabaseAdmin } from "../lib/supabase";
 
 const router = Router();
 
@@ -14,6 +15,63 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+const signupSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+router.post(
+  "/signup",
+  asyncHandler(async (req, res) => {
+    const { name, email, password } = signupSchema.parse(req.body);
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      res.status(409).json({ success: false, error: { code: "EMAIL_IN_USE", message: "Email already registered" } });
+      return;
+    }
+
+    // Create user in Supabase Auth
+    const { data: sbData, error: sbError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name },
+    });
+
+    if (sbError) {
+      res.status(500).json({ success: false, error: { code: "SUPABASE_ERROR", message: sbError.message } });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await prisma.user.create({
+      data: { name, email, passwordHash, role: "ADMIN" },
+    });
+
+    const token = signToken({ userId: user.id, email: user.email, role: user.role });
+
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.nodeEnv === "production",
+      maxAge: 8 * 60 * 60 * 1000,
+    });
+
+    await recordAudit({ userId: user.id, action: "SIGNUP", description: `${user.email} registered` });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        token,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        supabaseId: sbData.user?.id,
+      },
+    });
+  })
+);
 
 router.post(
   "/login",
