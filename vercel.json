@@ -17,7 +17,9 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "apps/backend/api/index.ts" },
     { "src": "/webhook/(.*)", "dest": "apps/backend/api/index.ts" },
-    { "handle": "filesystem" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/sw.js", "dest": "/sw.js" },
+    { "src": "/manifest.webmanifest", "dest": "/manifest.webmanifest" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
