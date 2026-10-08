@@ -7,6 +7,7 @@
     "apps/frontend"
   ],
   "scripts": {
+    "postinstall": "cd apps/backend && npx prisma generate",
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
     "build": "npm run build -w apps/backend && npm run build -w apps/frontend",
     "typecheck": "npm run typecheck -w apps/backend && npm run typecheck -w apps/frontend",
