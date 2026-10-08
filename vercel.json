@@ -17,7 +17,11 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "apps/backend/api/index.ts" },
     { "src": "/webhook/(.*)", "dest": "apps/backend/api/index.ts" },
-    { "handle": "filesystem" },
+    { "src": "/assets/(.*)", "dest": "/apps/frontend/assets/$1" },
+    { "src": "/registerSW.js", "dest": "/apps/frontend/registerSW.js" },
+    { "src": "/sw.js", "dest": "/apps/frontend/sw.js" },
+    { "src": "/workbox-(.*)", "dest": "/apps/frontend/workbox-$1" },
+    { "src": "/manifest.webmanifest", "dest": "/apps/frontend/manifest.webmanifest" },
     { "src": "/(.*)", "dest": "/apps/frontend/index.html" }
   ]
 }
