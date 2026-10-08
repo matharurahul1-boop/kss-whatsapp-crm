@@ -1,16 +1,23 @@
 {
   "version": 2,
-  "buildCommand": "npm install && npx prisma generate --schema=apps/backend/prisma/schema.prisma && npm run build -w apps/frontend",
-  "outputDirectory": "apps/frontend/dist",
-  "functions": {
-    "apps/backend/api/index.ts": {
-      "memory": 1024,
-      "maxDuration": 30
+  "builds": [
+    {
+      "src": "apps/backend/api/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "apps/frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist",
+        "buildCommand": "npx prisma generate --schema=../backend/prisma/schema.prisma && npm run build"
+      }
     }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/apps/backend/api/index.ts" },
-    { "source": "/webhook/(.*)", "destination": "/apps/backend/api/index.ts" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "apps/backend/api/index.ts" },
+    { "src": "/webhook/(.*)", "dest": "apps/backend/api/index.ts" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
