@@ -1,50 +1,61 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  MessageCircle,
-  FileText,
-  Users,
-  Send,
-  Bell,
-  Code2,
-  ScrollText,
-  Settings,
-  Megaphone,
+  LayoutDashboard, MessageCircle, FileText, Users, Send,
+  Bell, Code2, ScrollText, Settings, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/whatsapp-account", label: "WhatsApp Account", icon: MessageCircle },
-  { to: "/conversations", label: "Conversations", icon: Send },
-  { to: "/templates", label: "Templates", icon: FileText },
-  { to: "/contacts", label: "Contacts", icon: Users },
-  { to: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { to: "/notifications", label: "Notifications", icon: Bell },
-  { to: "/api-integration", label: "API Integration", icon: Code2 },
-  { to: "/logs", label: "Logs", icon: ScrollText },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard",       label: "Dashboard",       icon: LayoutDashboard, group: "main" },
+  { to: "/conversations",   label: "Conversations",   icon: MessageCircle,   group: "main" },
+  { to: "/contacts",        label: "Contacts",        icon: Users,           group: "main" },
+  { to: "/campaigns",       label: "Campaigns",       icon: Megaphone,       group: "main" },
+  { to: "/templates",       label: "Templates",       icon: FileText,        group: "main" },
+  { to: "/send",            label: "Send Message",    icon: Send,            group: "tools" },
+  { to: "/notifications",   label: "Notifications",   icon: Bell,            group: "tools" },
+  { to: "/api-integration", label: "API Integration", icon: Code2,           group: "tools" },
+  { to: "/logs",            label: "Logs",            icon: ScrollText,      group: "system" },
+  { to: "/settings",        label: "Settings",        icon: Settings,        group: "system" },
 ];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const main   = NAV_ITEMS.filter((i) => i.group === "main");
+  const tools  = NAV_ITEMS.filter((i) => i.group === "tools");
+  const system = NAV_ITEMS.filter((i) => i.group === "system");
+
+  const renderItem = (item: typeof NAV_ITEMS[0]) => (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
+          isActive
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        )
+      }
+    >
+      <item.icon className="h-4 w-4 shrink-0" />
+      {item.label}
+    </NavLink>
+  );
+
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-      {NAV_ITEMS.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-            )
-          }
-        >
-          <item.icon className="h-4 w-4 shrink-0" />
-          {item.label}
-        </NavLink>
-      ))}
+    <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
+      <div className="flex flex-col gap-0.5">
+        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Main</p>
+        {main.map(renderItem)}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Tools</p>
+        {tools.map(renderItem)}
+      </div>
+      <div className="mt-auto flex flex-col gap-0.5">
+        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">System</p>
+        {system.map(renderItem)}
+      </div>
     </nav>
   );
 }
@@ -53,17 +64,23 @@ export { NAV_ITEMS };
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-border/60 bg-card shadow-card lg:flex">
+      {/* Logo */}
+      <div className="flex h-16 items-center gap-3 border-b border-border/60 px-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
           <MessageCircle className="h-4 w-4" />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">KSS WhatsApp</p>
-          <p className="text-[11px] text-muted-foreground">Notifications</p>
+          <p className="text-sm font-bold tracking-tight">KSS WhatsApp</p>
+          <p className="text-[10px] font-medium text-muted-foreground">CRM Dashboard</p>
         </div>
       </div>
       <SidebarNav />
+
+      {/* Version tag */}
+      <div className="border-t border-border/60 px-5 py-3">
+        <p className="text-[10px] text-muted-foreground/50">v1.0 · KSS Interiors</p>
+      </div>
     </aside>
   );
 }

@@ -262,6 +262,39 @@ router.post(
   })
 );
 
+// Bulk stage change
+router.post(
+  "/bulk-stage",
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const { ids, stage } = z.object({
+      ids: z.array(z.string()).min(1).max(200),
+      stage: z.enum(["LEAD", "PROSPECT", "VISIT_SCHEDULED", "VISITED", "NEGOTIATION", "CLIENT", "LOST"]),
+    }).parse(req.body);
+
+    const contacts = await prisma.contact.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, phone: true, stage: true } });
+
+    await prisma.contact.updateMany({ where: { id: { in: ids } }, data: { stage } });
+
+    // Send stage template to contacts whose stage actually changed
+    const stageTpl = await (prisma as any).stageTemplate.findUnique({ where: { stage } });
+    if (stageTpl?.enabled && stageTpl.templateName) {
+      for (const c of contacts) {
+        if (c.stage !== stage) {
+          void sendTemplateToContact(c.phone, c.name, stageTpl.templateName, stageTpl.language);
+        }
+      }
+    }
+
+    await recordAudit({
+      userId: req.user?.userId,
+      action: "CONTACTS_BULK_STAGE",
+      description: `${contacts.length} contacts moved to ${STAGE_LABELS[stage] ?? stage}`,
+    });
+
+    res.json({ success: true, data: { updated: contacts.length } });
+  })
+);
+
 // Stage templates config routes
 router.get(
   "/stage-templates",

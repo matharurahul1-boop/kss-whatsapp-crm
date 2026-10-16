@@ -25,8 +25,10 @@ export async function recordOutboundMessage(opts: OutboundMessageOptions): Promi
     });
   }
 
-  await prisma.message.create({
-    data: {
+  await prisma.message.upsert({
+    where: { waMessageId },
+    update: {},
+    create: {
       conversationId: conversation.id,
       direction: "OUTBOUND",
       type,
