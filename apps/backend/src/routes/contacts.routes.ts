@@ -6,14 +6,49 @@ import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import { isValidPhone, normalizePhone } from "../utils/phone";
 import { ApiError } from "../middleware/errorHandler";
+import { getWhatsAppService } from "../services/whatsapp";
+import { recordOutboundMessage } from "../services/conversationService";
+
 
 const router = Router();
 router.use(requireAuth);
 
+const STAGE_LABELS: Record<string, string> = {
+  LEAD: "Lead",
+  PROSPECT: "Prospect",
+  VISIT_SCHEDULED: "Visit Scheduled",
+  VISITED: "Visited",
+  NEGOTIATION: "Negotiation",
+  CLIENT: "Client",
+  LOST: "Lost",
+};
+
+async function sendTemplateToContact(phone: string, contactName: string, templateName: string, language = "en") {
+  try {
+    const wa = getWhatsAppService();
+    const result = await wa.sendMessage({
+      phone,
+      templateName,
+      language,
+      variables: { "1": contactName },
+    });
+    await recordOutboundMessage({
+      phone,
+      waMessageId: result.messageId,
+      body: null,
+      templateName,
+      type: "TEMPLATE",
+    });
+    return result;
+  } catch (err) {
+    console.error(`[contacts] Failed to send template "${templateName}" to ${phone}:`, err);
+  }
+}
+
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const { search, source, tag, page = "1", pageSize = "10" } = req.query as Record<string, string>;
+    const { search, source, tag, stage, page = "1", pageSize = "10" } = req.query as Record<string, string>;
 
     const where = {
       ...(search
@@ -27,6 +62,7 @@ router.get(
         : {}),
       ...(source ? { source: source as never } : {}),
       ...(tag ? { tags: { some: { name: tag } } } : {}),
+      ...(stage ? { stage: stage as never } : {}),
     };
 
     const take = Number(pageSize);
@@ -54,6 +90,7 @@ const contactInputSchema = z.object({
   phone: z.string().min(6),
   email: z.string().email().optional().or(z.literal("")),
   source: z.enum(["MANUAL", "CRM_API", "EXHIBITION", "WEBSITE", "IMPORT"]).default("MANUAL"),
+  stage: z.enum(["LEAD", "PROSPECT", "VISIT_SCHEDULED", "VISITED", "NEGOTIATION", "CLIENT", "LOST"]).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -85,6 +122,7 @@ router.post(
         phone,
         email: input.email || null,
         source: input.source,
+        stage: input.stage ?? "LEAD",
         notes: input.notes,
         tags: { connect: tagConnections },
       },
@@ -92,6 +130,12 @@ router.post(
     });
 
     await recordAudit({ userId: req.user?.userId, action: "CONTACT_CREATED", description: `Contact "${contact.name}" created` });
+
+    // Send onboarding template if configured
+    const onboarding = await (prisma as any).stageTemplate.findUnique({ where: { stage: "LEAD" } });
+    if (onboarding?.enabled && onboarding.templateName) {
+      void sendTemplateToContact(phone, contact.name, onboarding.templateName, onboarding.language);
+    }
 
     res.status(201).json({ success: true, data: contact });
   })
@@ -119,11 +163,25 @@ router.put(
         phone,
         email: input.email || undefined,
         source: input.source,
+        stage: input.stage,
         notes: input.notes,
         ...(tagConnections ? { tags: { set: tagConnections } } : {}),
       },
       include: { tags: true },
     });
+
+    // Stage changed → send stage template
+    if (input.stage && input.stage !== existing.stage) {
+      const stageTpl = await (prisma as any).stageTemplate.findUnique({ where: { stage: input.stage } });
+      if (stageTpl?.enabled && stageTpl.templateName) {
+        void sendTemplateToContact(phone, updated.name, stageTpl.templateName, stageTpl.language);
+      }
+      await recordAudit({
+        userId: req.user?.userId,
+        action: "CONTACT_STAGE_CHANGED",
+        description: `Contact "${updated.name}" moved to ${STAGE_LABELS[input.stage] ?? input.stage}`,
+      });
+    }
 
     res.json({ success: true, data: updated });
   })
@@ -201,6 +259,35 @@ router.post(
         invalidRecords: [...invalid, ...duplicates],
       },
     });
+  })
+);
+
+// Stage templates config routes
+router.get(
+  "/stage-templates",
+  asyncHandler(async (_req, res) => {
+    const rows = await (prisma as any).stageTemplate.findMany({ orderBy: { stage: "asc" } });
+    res.json({ success: true, data: rows });
+  })
+);
+
+router.put(
+  "/stage-templates/:stage",
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const { stage } = req.params;
+    const { templateName, language, enabled } = z.object({
+      templateName: z.string(),
+      language: z.string().default("en"),
+      enabled: z.boolean().default(true),
+    }).parse(req.body);
+
+    const row = await (prisma as any).stageTemplate.upsert({
+      where: { stage },
+      update: { templateName, language, enabled },
+      create: { stage, templateName, language, enabled },
+    });
+
+    res.json({ success: true, data: row });
   })
 );
 

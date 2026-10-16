@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Signal } from "lucide-react";
+import { Signal, Zap } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { api, ApiRequestError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ContactStage, STAGE_LABELS, WhatsAppTemplate } from "@/lib/types";
 
 interface MetaConfigResponse {
   appId?: string;
@@ -33,6 +35,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp Config</TabsTrigger>
+          <TabsTrigger value="automation">Automation</TabsTrigger>
           <TabsTrigger value="system">System Mode</TabsTrigger>
         </TabsList>
 
@@ -41,6 +44,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="whatsapp">
           <WhatsAppConfigTab />
+        </TabsContent>
+        <TabsContent value="automation">
+          <AutomationTab />
         </TabsContent>
         <TabsContent value="system">
           <SystemModeTab />
@@ -212,6 +218,108 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function AutomationTab() {
+    const { toast } = useToast();
+    const stages = Object.keys(STAGE_LABELS) as ContactStage[];
+
+    const { data: templates } = useQuery({
+      queryKey: ["templates-approved"],
+      queryFn: () => api.get<{ items: WhatsAppTemplate[] }>("/templates?status=APPROVED&pageSize=100"),
+    });
+
+    const { data: stageTpls, refetch } = useQuery({
+      queryKey: ["stage-templates"],
+      queryFn: () => api.get<{ stage: string; templateName: string; language: string; enabled: boolean }[]>("/contacts/stage-templates"),
+    });
+
+    const approvedTemplates = templates?.items ?? [];
+
+    const saveMutation = useMutation({
+      mutationFn: ({ stage, templateName, language, enabled }: { stage: string; templateName: string; language: string; enabled: boolean }) =>
+        api.put(`/contacts/stage-templates/${stage}`, { templateName, language, enabled }),
+      onSuccess: () => { refetch(); toast({ title: "Saved", variant: "success" }); },
+      onError: () => toast({ title: "Failed to save", variant: "error" }),
+    });
+
+    function StageRow({ stage }: { stage: ContactStage }) {
+      const current = stageTpls?.find((s) => s.stage === stage);
+      const [tplName, setTplName] = useState(current?.templateName ?? "");
+      const [lang, setLang] = useState(current?.language ?? "en");
+      const [enabled, setEnabled] = useState(current?.enabled ?? true);
+
+      useEffect(() => {
+        setTplName(current?.templateName ?? "");
+        setLang(current?.language ?? "en");
+        setEnabled(current?.enabled ?? true);
+      }, [current?.templateName, current?.language, current?.enabled]);
+
+      return (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b last:border-0">
+          <div className="w-40 shrink-0">
+            <p className="text-sm font-medium">{STAGE_LABELS[stage]}</p>
+            <p className="text-xs text-muted-foreground">{stage === "LEAD" ? "Sent on contact create" : "Sent on stage change"}</p>
+          </div>
+
+          <div className="flex-1 flex flex-col sm:flex-row gap-2">
+            <Select value={tplName || "__none__"} onValueChange={(v) => setTplName(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select template..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— No template —</SelectItem>
+                {approvedTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Input
+              className="w-24 shrink-0"
+              placeholder="Language"
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+            />
+
+            <label className="flex items-center gap-1.5 text-sm shrink-0 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+                className="rounded"
+              />
+              Active
+            </label>
+
+            <Button
+              size="sm"
+              disabled={!tplName || saveMutation.isPending}
+              onClick={() => saveMutation.mutate({ stage, templateName: tplName, language: lang, enabled })}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Zap className="h-4 w-4" /> Stage Automation</CardTitle>
+          <CardDescription>
+            Choose which WhatsApp template is sent automatically when a contact is created or moves to a new stage.
+            Only <strong>APPROVED</strong> templates appear here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y p-0 px-6">
+          {stages.map((stage) => (
+            <StageRow key={stage} stage={stage} />
+          ))}
         </CardContent>
       </Card>
     );

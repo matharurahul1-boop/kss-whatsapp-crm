@@ -51,6 +51,27 @@ export interface WhatsAppTemplate {
 }
 
 export type ContactSource = "MANUAL" | "CRM_API" | "EXHIBITION" | "WEBSITE" | "IMPORT";
+export type ContactStage = "LEAD" | "PROSPECT" | "VISIT_SCHEDULED" | "VISITED" | "NEGOTIATION" | "CLIENT" | "LOST";
+
+export const STAGE_LABELS: Record<ContactStage, string> = {
+  LEAD: "Lead",
+  PROSPECT: "Prospect",
+  VISIT_SCHEDULED: "Visit Scheduled",
+  VISITED: "Visited",
+  NEGOTIATION: "Negotiation",
+  CLIENT: "Client",
+  LOST: "Lost",
+};
+
+export const STAGE_COLORS: Record<ContactStage, string> = {
+  LEAD: "bg-blue-100 text-blue-800",
+  PROSPECT: "bg-purple-100 text-purple-800",
+  VISIT_SCHEDULED: "bg-yellow-100 text-yellow-800",
+  VISITED: "bg-orange-100 text-orange-800",
+  NEGOTIATION: "bg-pink-100 text-pink-800",
+  CLIENT: "bg-green-100 text-green-800",
+  LOST: "bg-gray-100 text-gray-600",
+};
 
 export interface ContactTag {
   id: string;
@@ -63,6 +84,7 @@ export interface Contact {
   phone: string;
   email: string | null;
   source: ContactSource;
+  stage: ContactStage;
   notes: string | null;
   tags: ContactTag[];
   createdAt: string;

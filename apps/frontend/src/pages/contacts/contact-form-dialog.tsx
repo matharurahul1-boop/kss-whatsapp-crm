@@ -6,7 +6,7 @@ import { Input, Label, Textarea } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { api, ApiRequestError } from "@/lib/api";
-import { Contact, ContactSource } from "@/lib/types";
+import { Contact, ContactSource, ContactStage, STAGE_LABELS } from "@/lib/types";
 
 export function ContactFormDialog({ open, onOpenChange, contact }: { open: boolean; onOpenChange: (open: boolean) => void; contact?: Contact | null }) {
   const queryClient = useQueryClient();
@@ -17,6 +17,7 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [source, setSource] = useState<ContactSource>("MANUAL");
+  const [stage, setStage] = useState<ContactStage>("LEAD");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
       setPhone(contact?.phone ?? "");
       setEmail(contact?.email ?? "");
       setSource(contact?.source ?? "MANUAL");
+      setStage(contact?.stage ?? "LEAD");
       setTags(contact?.tags.map((t) => t.name).join(", ") ?? "");
       setNotes(contact?.notes ?? "");
       setError(null);
@@ -40,6 +42,7 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
         phone,
         email: email || undefined,
         source,
+        stage,
         notes: notes || undefined,
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       };
@@ -73,6 +76,17 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
           <div className="flex flex-col gap-1.5">
             <Label>Email (optional)</Label>
             <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aarav@example.com" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Stage</Label>
+            <Select value={stage} onValueChange={(v) => setStage(v as ContactStage)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(STAGE_LABELS) as ContactStage[]).map((s) => (
+                  <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Source</Label>

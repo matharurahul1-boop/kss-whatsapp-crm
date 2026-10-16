@@ -56,6 +56,16 @@ enum ContactSource {
   IMPORT
 }
 
+enum ContactStage {
+  LEAD
+  PROSPECT
+  VISIT_SCHEDULED
+  VISITED
+  NEGOTIATION
+  CLIENT
+  LOST
+}
+
 enum CampaignStatus {
   DRAFT
   SCHEDULED
@@ -178,6 +188,7 @@ model Contact {
   phone     String        @unique
   email     String?
   source    ContactSource @default(MANUAL)
+  stage     ContactStage  @default(LEAD)
   notes     String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -189,6 +200,17 @@ model Contact {
 
   @@index([phone])
   @@index([source])
+  @@index([stage])
+}
+
+model StageTemplate {
+  id           String       @id @default(cuid())
+  stage        ContactStage @unique
+  templateName String
+  language     String       @default("en")
+  enabled      Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 model Campaign {

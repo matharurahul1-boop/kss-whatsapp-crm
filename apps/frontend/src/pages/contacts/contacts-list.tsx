@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { formatPhone } from "@/lib/utils";
-import { Contact, PaginatedResult } from "@/lib/types";
+import { Contact, PaginatedResult, STAGE_LABELS, STAGE_COLORS, ContactStage } from "@/lib/types";
 import { ContactFormDialog } from "./contact-form-dialog";
 import { CsvImportDialog } from "./csv-import-dialog";
 
@@ -26,6 +26,7 @@ export default function ContactsPage() {
 
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
+  const [stage, setStage] = useState("");
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -35,9 +36,10 @@ export default function ContactsPage() {
   const params = new URLSearchParams({ page: String(page), pageSize: "10" });
   if (search) params.set("search", search);
   if (source) params.set("source", source);
+  if (stage) params.set("stage", stage);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["contacts", search, source, page],
+    queryKey: ["contacts", search, source, stage, page],
     queryFn: () => api.get<PaginatedResult<Contact>>(`/contacts?${params.toString()}`),
   });
 
@@ -77,8 +79,17 @@ export default function ContactsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search name, phone, email..." className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
+        <Select value={stage || "ALL"} onValueChange={(v) => { setStage(v === "ALL" ? "" : v); setPage(1); }}>
+          <SelectTrigger className="sm:w-44"><SelectValue placeholder="Stage" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Stages</SelectItem>
+            {(Object.keys(STAGE_LABELS) as ContactStage[]).map((s) => (
+              <SelectItem key={s} value={s}>{STAGE_LABELS[s]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={source || "ALL"} onValueChange={(v) => { setSource(v === "ALL" ? "" : v); setPage(1); }}>
-          <SelectTrigger className="sm:w-48"><SelectValue placeholder="Source" /></SelectTrigger>
+          <SelectTrigger className="sm:w-40"><SelectValue placeholder="Source" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Sources</SelectItem>
             {["MANUAL", "CRM_API", "EXHIBITION", "WEBSITE", "IMPORT"].map((s) => (
@@ -100,7 +111,7 @@ export default function ContactsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead>Stage</TableHead>
                   <TableHead>Tags</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -113,7 +124,11 @@ export default function ContactsPage() {
                       {contact.email && <p className="text-xs text-muted-foreground">{contact.email}</p>}
                     </TableCell>
                     <TableCell className="font-mono text-sm">{formatPhone(contact.phone)}</TableCell>
-                    <TableCell><Badge variant="outline">{contact.source.replace("_", " ")}</Badge></TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_COLORS[contact.stage ?? "LEAD"]}`}>
+                        {STAGE_LABELS[contact.stage ?? "LEAD"]}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {contact.tags.map((t) => (
