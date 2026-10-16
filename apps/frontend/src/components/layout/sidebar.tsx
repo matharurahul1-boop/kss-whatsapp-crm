@@ -23,7 +23,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const tools  = NAV_ITEMS.filter((i) => i.group === "tools");
   const system = NAV_ITEMS.filter((i) => i.group === "system");
 
-  const renderItem = (item: typeof NAV_ITEMS[0]) => (
+  const renderItem = (item: (typeof NAV_ITEMS)[0]) => (
     <NavLink
       key={item.to}
       to={item.to}
@@ -33,7 +33,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
           isActive
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )
       }
     >
@@ -45,15 +45,21 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
       <div className="flex flex-col gap-0.5">
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Main</p>
+        <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+          Main
+        </p>
         {main.map(renderItem)}
       </div>
       <div className="flex flex-col gap-0.5">
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Tools</p>
+        <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+          Tools
+        </p>
         {tools.map(renderItem)}
       </div>
       <div className="mt-auto flex flex-col gap-0.5">
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">System</p>
+        <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+          System
+        </p>
         {system.map(renderItem)}
       </div>
     </nav>
@@ -64,22 +70,27 @@ export { NAV_ITEMS };
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border/60 bg-card shadow-card lg:flex">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-border/60 px-5">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-card lg:flex">
+      {/* Brand header */}
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border/50 px-5">
+        {/* KSS espresso logomark */}
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
           <MessageCircle className="h-4 w-4" />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-bold tracking-tight">KSS WhatsApp</p>
-          <p className="text-[10px] font-medium text-muted-foreground">CRM Dashboard</p>
+          <p className="text-sm font-bold tracking-tight text-foreground">KSS WhatsApp</p>
+          <p className="text-[10px] font-medium text-muted-foreground">KSS Interiors · CRM</p>
         </div>
       </div>
-      <SidebarNav />
 
-      {/* Version tag */}
-      <div className="border-t border-border/60 px-5 py-3">
-        <p className="text-[10px] text-muted-foreground/50">v1.0 · KSS Interiors</p>
+      {/* Nav fills remaining height — scrollable if needed */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SidebarNav />
+      </div>
+
+      {/* Footer */}
+      <div className="shrink-0 border-t border-border/50 px-5 py-3">
+        <p className="text-[10px] text-muted-foreground/40">v1.0 · KSS Interiors, Gurgaon</p>
       </div>
     </aside>
   );
