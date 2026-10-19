@@ -255,7 +255,7 @@ export default function SettingsPage() {
       mutationFn: ({ event, templateName, language, enabled }: Omit<TriggerRow, "label" | "recipient">) =>
         api.put(`/triggers/${event}`, { templateName, language, enabled }),
       onSuccess: () => { refetch(); toast({ title: "Trigger saved", variant: "success" }); },
-      onError:   () => toast({ title: "Failed to save", variant: "error" }),
+      onError:   () => toast({ title: "Failed to save", variant: "destructive" }),
     });
 
     const GROUPS = [
@@ -424,7 +424,7 @@ export default function SettingsPage() {
       mutationFn: ({ stage, templateName, language, enabled }: { stage: string; templateName: string; language: string; enabled: boolean }) =>
         api.put(`/contacts/stage-templates/${stage}`, { templateName, language, enabled }),
       onSuccess: () => { refetch(); toast({ title: "Saved", variant: "success" }); },
-      onError: () => toast({ title: "Failed to save", variant: "error" }),
+      onError: () => toast({ title: "Failed to save", variant: "destructive" }),
     });
 
     function StageRow({ stage }: { stage: ContactStage }) {
@@ -443,7 +443,7 @@ export default function SettingsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b last:border-0">
           <div className="w-40 shrink-0">
             <p className="text-sm font-medium">{STAGE_LABELS[stage]}</p>
-            <p className="text-xs text-muted-foreground">{stage === "LEAD" ? "Sent on contact create" : "Sent on stage change"}</p>
+            <p className="text-xs text-muted-foreground">{stage === "ENQUIRY" ? "Sent on contact create" : "Sent on stage change"}</p>
           </div>
 
           <div className="flex-1 flex flex-col sm:flex-row gap-2">

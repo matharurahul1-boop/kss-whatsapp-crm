@@ -17,7 +17,7 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [source, setSource] = useState<ContactSource>("MANUAL");
-  const [stage, setStage] = useState<ContactStage>("LEAD");
+  const [stage, setStage] = useState<ContactStage>("ENQUIRY");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
       setPhone(contact?.phone ?? "");
       setEmail(contact?.email ?? "");
       setSource(contact?.source ?? "MANUAL");
-      setStage(contact?.stage ?? "LEAD");
+      setStage(contact?.stage ?? "ENQUIRY");
       setTags(contact?.tags.map((t) => t.name).join(", ") ?? "");
       setNotes(contact?.notes ?? "");
       setError(null);

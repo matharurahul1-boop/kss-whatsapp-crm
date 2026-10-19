@@ -72,7 +72,7 @@ export default function ContactsPage() {
       setBulkStageOpen(false);
       setPendingBulkStage("");
     },
-    onError: () => toast({ title: "Bulk stage change failed", variant: "error" }),
+    onError: () => toast({ title: "Bulk stage change failed", variant: "destructive" }),
   });
 
   const pageIds = data?.items.map((c) => c.id) ?? [];
