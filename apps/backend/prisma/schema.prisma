@@ -213,6 +213,44 @@ model StageTemplate {
   updatedAt    DateTime     @updatedAt
 }
 
+enum TriggerEvent {
+  ENQUIRY_CREATED
+  PI_CREATED
+  SALES_ORDER_INITIATED
+  SERVICE_REQUEST_REMINDER
+  TICKET_OPEN
+  TICKET_CLOSED
+  ORDER_STATUS_PRODUCTION
+  ORDER_STATUS_READY_DISPATCH
+  ORDER_STATUS_DISPATCHED
+  ORDER_STATUS_INSTALLATION
+  ORDER_STATUS_HANDOVER
+  ENQUIRY_CANCELLED_ADMIN
+  DELAY_ENQUIRY_ADMIN
+  ENQUIRY_CONVERTED_ADMIN
+  PREBOOKED_FOLLOWUP_SALES
+}
+
+enum TriggerRecipient {
+  CUSTOMER
+  ADMIN
+  SALESPERSON
+}
+
+model TriggerConfig {
+  id           String           @id @default(cuid())
+  event        TriggerEvent     @unique
+  label        String
+  templateName String           @default("")
+  language     String           @default("en")
+  enabled      Boolean          @default(false)
+  recipient    TriggerRecipient
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([event])
+}
+
 model Campaign {
   id             String               @id @default(cuid())
   name           String

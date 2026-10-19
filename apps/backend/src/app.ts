@@ -19,6 +19,7 @@ import webhooksRoutes from "./routes/webhooks.routes";
 import conversationsRoutes from "./routes/conversations.routes";
 import uploadRoutes from "./routes/upload.routes";
 import v1Routes from "./routes/v1";
+import triggersRoutes from "./routes/triggers.routes";
 
 export function createApp() {
   const app = express();
@@ -49,6 +50,7 @@ export function createApp() {
   app.use("/api/conversations", conversationsRoutes);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/v1", v1Routes);
+  app.use("/api/triggers", triggersRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

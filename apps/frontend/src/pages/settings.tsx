@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Signal, Zap } from "lucide-react";
+import { Signal, Zap, Bell, User, Building2, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,14 +32,18 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Settings" description="Manage your account, WhatsApp configuration, and system preferences." />
 
-      <Tabs defaultValue="account">
-        <TabsList>
+      <Tabs defaultValue="triggers">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="triggers">Triggers</TabsTrigger>
+          <TabsTrigger value="automation">Stage Automation</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp Config</TabsTrigger>
-          <TabsTrigger value="automation">Automation</TabsTrigger>
           <TabsTrigger value="system">System Mode</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="triggers">
+          <TriggersTab />
+        </TabsContent>
         <TabsContent value="account">
           <AccountTab />
         </TabsContent>
@@ -220,6 +225,174 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  /* ── Triggers Tab ────────────────────────────────────────────────── */
+  function TriggersTab() {
+    interface TriggerRow {
+      event: string;
+      label: string;
+      recipient: "CUSTOMER" | "ADMIN" | "SALESPERSON";
+      templateName: string;
+      language: string;
+      enabled: boolean;
+    }
+
+    const { data: triggers, refetch, isLoading } = useQuery({
+      queryKey: ["triggers"],
+      queryFn: () => api.get<TriggerRow[]>("/triggers"),
+    });
+
+    const { data: templates } = useQuery({
+      queryKey: ["templates-approved"],
+      queryFn: () => api.get<{ items: WhatsAppTemplate[] }>("/templates?status=APPROVED&pageSize=100"),
+    });
+
+    const approvedTemplates = templates?.items ?? [];
+
+    const saveMutation = useMutation({
+      mutationFn: ({ event, templateName, language, enabled }: Omit<TriggerRow, "label" | "recipient">) =>
+        api.put(`/triggers/${event}`, { templateName, language, enabled }),
+      onSuccess: () => { refetch(); toast({ title: "Trigger saved", variant: "success" }); },
+      onError:   () => toast({ title: "Failed to save", variant: "error" }),
+    });
+
+    const GROUPS = [
+      { key: "CUSTOMER",   label: "Customer Notifications",  icon: User,      color: "text-blue-600"  },
+      { key: "ADMIN",      label: "Admin Alerts",            icon: Building2, color: "text-amber-600" },
+      { key: "SALESPERSON",label: "Salesperson Reminders",   icon: Bell,      color: "text-violet-600"},
+    ] as const;
+
+    function TriggerRow({ row }: { row: TriggerRow }) {
+      const [tplName, setTplName] = useState(row.templateName ?? "");
+      const [lang, setLang]       = useState(row.language ?? "en");
+      const [enabled, setEnabled] = useState(row.enabled ?? false);
+
+      useEffect(() => {
+        setTplName(row.templateName ?? "");
+        setLang(row.language ?? "en");
+        setEnabled(row.enabled ?? false);
+      }, [row.templateName, row.language, row.enabled]);
+
+      const isDirty = tplName !== (row.templateName ?? "") || lang !== (row.language ?? "en") || enabled !== (row.enabled ?? false);
+
+      return (
+        <div className={cn(
+          "flex flex-col gap-3 rounded-xl border p-4 transition-all",
+          enabled ? "border-primary/20 bg-primary/5" : "border-border bg-card"
+        )}>
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-1 items-center gap-2.5">
+              <span className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+                enabled ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+              )}>
+                {enabled ? "ON" : "OFF"}
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{row.label}</p>
+                {tplName && (
+                  <p className="text-xs text-muted-foreground">
+                    Template: <span className="font-mono text-primary">{tplName}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <label className="flex cursor-pointer items-center">
+              <div className={cn(
+                "relative h-5 w-9 rounded-full transition-colors",
+                enabled ? "bg-primary" : "bg-border"
+              )}>
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={cn(
+                  "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                  enabled ? "translate-x-4" : "translate-x-0.5"
+                )} />
+              </div>
+            </label>
+          </div>
+
+          {/* Controls */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Select value={tplName || "__none__"} onValueChange={(v) => setTplName(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="flex-1 h-8 text-xs">
+                <SelectValue placeholder="Select approved template…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— No template —</SelectItem>
+                {approvedTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                ))}
+                {approvedTemplates.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No approved templates yet</div>
+                )}
+              </SelectContent>
+            </Select>
+
+            <Input
+              className="w-20 h-8 shrink-0 text-xs"
+              placeholder="Lang"
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+            />
+
+            <Button
+              size="sm"
+              variant={isDirty ? "default" : "outline"}
+              disabled={saveMutation.isPending}
+              onClick={() => saveMutation.mutate({ event: row.event, templateName: tplName, language: lang, enabled })}
+              className="shrink-0 h-8"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (isLoading) {
+      return <div className="p-8 text-center text-sm text-muted-foreground">Loading triggers…</div>;
+    }
+
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Info banner */}
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+          <Bell className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="text-xs text-amber-800 dark:text-amber-200">
+            <p className="font-semibold">15 Notification Triggers</p>
+            <p className="mt-0.5">These triggers fire WhatsApp templates automatically when business events occur.
+            Select an <strong>Approved</strong> template for each trigger you want to activate.
+            Templates must first be created and approved in Meta Business Manager.</p>
+          </div>
+        </div>
+
+        {GROUPS.map(({ key, label, icon: Icon, color }) => {
+          const rows = (triggers ?? []).filter((r) => r.recipient === key);
+          const activeCount = rows.filter((r) => r.enabled && r.templateName).length;
+          return (
+            <div key={key} className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Icon className={cn("h-4 w-4", color)} />
+                <h3 className="text-sm font-bold text-foreground">{label}</h3>
+                <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {activeCount}/{rows.length} active
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {rows.map((r) => <TriggerRow key={r.event} row={r} />)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
