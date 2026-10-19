@@ -66,4 +66,34 @@ router.get(
   })
 );
 
+const FUNNEL_STAGES = [
+  "ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION",
+  "PI_CREATED","SALES_ORDER","PRODUCTION","READY_DISPATCH","DISPATCHED",
+  "INSTALLATION","HANDOVER","SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED",
+  "ON_HOLD","LOST",
+];
+
+router.get(
+  "/stage-funnel",
+  asyncHandler(async (_req, res) => {
+    const [stageCounts, budgetAgg] = await Promise.all([
+      prisma.contact.groupBy({ by: ["stage"], _count: { _all: true } }),
+      prisma.contact.aggregate({ _sum: { budget: true }, where: { budget: { not: null } } }),
+    ]);
+
+    const countMap = new Map(stageCounts.map((r: { stage: string; _count: { _all: number } }) => [r.stage, r._count._all]));
+    const stages = FUNNEL_STAGES.map((stage) => ({ stage, count: countMap.get(stage) ?? 0 }));
+    const totalContacts = stages.reduce((s, r) => s + r.count, 0);
+
+    res.json({
+      success: true,
+      data: {
+        stages,
+        totalContacts,
+        totalPipelineValue: budgetAgg._sum.budget ?? 0,
+      },
+    });
+  })
+);
+
 export default router;

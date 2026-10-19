@@ -185,7 +185,8 @@ export default function ContactsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Stage</TableHead>
-                  <TableHead>Tags</TableHead>
+                  <TableHead className="hidden sm:table-cell">Budget</TableHead>
+                  <TableHead className="hidden md:table-cell">Tags</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -216,11 +217,18 @@ export default function ContactsPage() {
                       </TableCell>
                       <TableCell className="font-mono text-sm">{formatPhone(contact.phone)}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_COLORS[contact.stage ?? "LEAD"]}`}>
-                          {STAGE_LABELS[contact.stage ?? "LEAD"]}
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_COLORS[contact.stage ?? "ENQUIRY"]}`}>
+                          {STAGE_LABELS[contact.stage ?? "ENQUIRY"]}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                        {contact.budget != null
+                          ? contact.budget >= 100000
+                            ? `₹${(contact.budget / 100000).toFixed(1)}L`
+                            : `₹${(contact.budget / 1000).toFixed(0)}K`
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex flex-wrap gap-1">
                           {contact.tags.map((t) => (
                             <Badge key={t.id} variant="secondary">{t.name}</Badge>

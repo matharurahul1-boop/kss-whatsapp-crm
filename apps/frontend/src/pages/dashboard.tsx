@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { MessageCircle, FileText, Send, CheckCheck, Plus, Megaphone } from "lucide-react";
+import { MessageCircle, FileText, Send, CheckCheck, Plus, TrendingUp, IndianRupee, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { formatDate, formatPhone } from "@/lib/utils";
-import { Campaign, Notification, WhatsAppAccount } from "@/lib/types";
+import { Campaign, Notification, WhatsAppAccount, STAGE_LABELS, ContactStage } from "@/lib/types";
 
 interface DashboardSummary {
   account: WhatsAppAccount | null;
@@ -28,9 +28,41 @@ interface DeliveryPoint {
   failed: number;
 }
 
+interface StageFunnelData {
+  stages: { stage: string; count: number }[];
+  totalContacts: number;
+  totalPipelineValue: number;
+}
+
 function countFor(items: { status: string; count: number }[], status: string): number {
   return items.find((i) => i.status === status)?.count ?? 0;
 }
+
+function formatCurrency(v: number): string {
+  if (v >= 10_00_000) return `₹${(v / 10_00_000).toFixed(1)}L`;
+  if (v >= 1_000) return `₹${(v / 1_000).toFixed(0)}K`;
+  return `₹${v}`;
+}
+
+const FUNNEL_COLORS: Record<string, string> = {
+  ENQUIRY: "#3b82f6",
+  PROSPECT: "#8b5cf6",
+  VISIT_SCHEDULED: "#f59e0b",
+  VISITED: "#f97316",
+  NEGOTIATION: "#ef4444",
+  PI_CREATED: "#06b6d4",
+  SALES_ORDER: "#0ea5e9",
+  PRODUCTION: "#6366f1",
+  READY_DISPATCH: "#a855f7",
+  DISPATCHED: "#d946ef",
+  INSTALLATION: "#84cc16",
+  HANDOVER: "#22c55e",
+  SERVICE_REQUEST: "#14b8a6",
+  TICKET_OPEN: "#f43f5e",
+  TICKET_CLOSED: "#10b981",
+  ON_HOLD: "#78716c",
+  LOST: "#9ca3af",
+};
 
 export default function DashboardPage() {
   const { data: summary, isLoading } = useQuery({
@@ -41,6 +73,11 @@ export default function DashboardPage() {
   const { data: deliveryOverview } = useQuery({
     queryKey: ["delivery-overview"],
     queryFn: () => api.get<DeliveryPoint[]>("/dashboard/delivery-overview"),
+  });
+
+  const { data: funnelData } = useQuery({
+    queryKey: ["stage-funnel"],
+    queryFn: () => api.get<StageFunnelData>("/dashboard/stage-funnel"),
   });
 
   const templates = summary?.templatesByStatus ?? [];
@@ -74,6 +111,10 @@ export default function DashboardPage() {
     },
   ];
 
+  const stages = funnelData?.stages ?? [];
+  const maxCount = Math.max(...stages.map((s) => s.count), 1);
+  const activeStages = stages.filter((s) => s.count > 0);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -95,6 +136,7 @@ export default function DashboardPage() {
         }
       />
 
+      {/* ── Top stat cards ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
@@ -114,6 +156,89 @@ export default function DashboardPage() {
             ))}
       </div>
 
+      {/* ── Pipeline KPI cards ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-start justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Total Contacts</p>
+              <p className="mt-1.5 text-2xl font-semibold">{funnelData?.totalContacts ?? "—"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Across all stages</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-start justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Pipeline Value</p>
+              <p className="mt-1.5 text-2xl font-semibold">
+                {funnelData ? formatCurrency(funnelData.totalPipelineValue) : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Sum of all budgets</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+              <IndianRupee className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-start justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Conversion (→ Handover)</p>
+              <p className="mt-1.5 text-2xl font-semibold">
+                {funnelData && funnelData.totalContacts > 0
+                  ? `${((stages.find((s) => s.stage === "HANDOVER")?.count ?? 0) / funnelData.totalContacts * 100).toFixed(1)}%`
+                  : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Enquiry → Handover rate</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Conversion Funnel ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Conversion Funnel — Stage-wise Contact Count</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!funnelData ? (
+            <Skeleton className="h-64 w-full" />
+          ) : activeStages.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">No contacts yet. Add contacts to see the funnel.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {stages.map(({ stage, count }) => {
+                const pct = Math.round((count / maxCount) * 100);
+                const color = FUNNEL_COLORS[stage] ?? "#9ca3af";
+                const label = STAGE_LABELS[stage as ContactStage] ?? stage;
+                return (
+                  <div key={stage} className="flex items-center gap-3">
+                    <span className="w-36 shrink-0 text-right text-xs font-medium text-muted-foreground">{label}</span>
+                    <div className="relative h-6 flex-1 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: color, opacity: count === 0 ? 0.18 : 1 }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-left text-sm font-semibold" style={{ color: count > 0 ? color : undefined }}>
+                      {count}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Delivery Overview + Campaigns by Status ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -156,6 +281,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* ── Recent Campaigns + Notifications ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between">

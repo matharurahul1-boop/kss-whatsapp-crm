@@ -103,6 +103,8 @@ const contactInputSchema = z.object({
   stage: z.enum(["ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION","PI_CREATED","SALES_ORDER","PRODUCTION","READY_DISPATCH","DISPATCHED","INSTALLATION","HANDOVER","SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED","ON_HOLD","LOST"]).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  budget: z.number().positive().optional(),
+  referredBy: z.string().optional(),
 });
 
 async function connectTags(tagNames: string[] = []) {
@@ -134,6 +136,8 @@ router.post(
         source: input.source,
         stage: input.stage ?? "ENQUIRY",
         notes: input.notes,
+        budget: input.budget,
+        referredBy: input.referredBy || null,
         tags: { connect: tagConnections },
       },
       include: { tags: true },
@@ -175,6 +179,8 @@ router.put(
         source: input.source,
         stage: input.stage,
         notes: input.notes,
+        budget: input.budget,
+        referredBy: input.referredBy || undefined,
         ...(tagConnections ? { tags: { set: tagConnections } } : {}),
       },
       include: { tags: true },

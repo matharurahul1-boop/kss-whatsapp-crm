@@ -121,6 +121,8 @@ export interface Contact {
   source: ContactSource;
   stage: ContactStage;
   notes: string | null;
+  budget: number | null;
+  referredBy: string | null;
   tags: ContactTag[];
   createdAt: string;
   updatedAt: string;

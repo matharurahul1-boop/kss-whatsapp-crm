@@ -20,6 +20,8 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
   const [stage, setStage] = useState<ContactStage>("ENQUIRY");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
+  const [budget, setBudget] = useState("");
+  const [referredBy, setReferredBy] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +33,8 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
       setStage(contact?.stage ?? "ENQUIRY");
       setTags(contact?.tags.map((t) => t.name).join(", ") ?? "");
       setNotes(contact?.notes ?? "");
+      setBudget(contact?.budget != null ? String(contact.budget) : "");
+      setReferredBy(contact?.referredBy ?? "");
       setError(null);
     }
   }, [open, contact]);
@@ -45,6 +49,8 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
         stage,
         notes: notes || undefined,
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+        budget: budget ? parseFloat(budget) : undefined,
+        referredBy: referredBy || undefined,
       };
       return isEdit ? api.put(`/contacts/${contact!.id}`, payload) : api.post("/contacts", payload);
     },
@@ -98,6 +104,16 @@ export function ContactFormDialog({ open, onOpenChange, contact }: { open: boole
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>Budget (₹)</Label>
+              <Input type="number" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 150000" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Referred By</Label>
+              <Input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Client name / phone" />
+            </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Tags (comma separated)</Label>
