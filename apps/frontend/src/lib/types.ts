@@ -51,26 +51,61 @@ export interface WhatsAppTemplate {
 }
 
 export type ContactSource = "MANUAL" | "CRM_API" | "EXHIBITION" | "WEBSITE" | "IMPORT";
-export type ContactStage = "LEAD" | "PROSPECT" | "VISIT_SCHEDULED" | "VISITED" | "NEGOTIATION" | "CLIENT" | "LOST";
+export type ContactStage =
+  // Pre-sale
+  | "ENQUIRY" | "PROSPECT" | "VISIT_SCHEDULED" | "VISITED" | "NEGOTIATION"
+  // Sales milestones
+  | "PI_CREATED" | "SALES_ORDER"
+  // Order production & delivery
+  | "PRODUCTION" | "READY_DISPATCH" | "DISPATCHED" | "INSTALLATION" | "HANDOVER"
+  // Post-sale service
+  | "SERVICE_REQUEST" | "TICKET_OPEN" | "TICKET_CLOSED"
+  // Terminal
+  | "ON_HOLD" | "LOST";
 
 export const STAGE_LABELS: Record<ContactStage, string> = {
-  LEAD: "Lead",
-  PROSPECT: "Prospect",
-  VISIT_SCHEDULED: "Visit Scheduled",
-  VISITED: "Visited",
-  NEGOTIATION: "Negotiation",
-  CLIENT: "Client",
-  LOST: "Lost",
+  // Pre-sale
+  ENQUIRY:          "Enquiry",
+  PROSPECT:         "Prospect",
+  VISIT_SCHEDULED:  "Visit Scheduled",
+  VISITED:          "Visited",
+  NEGOTIATION:      "Negotiation",
+  // Sales
+  PI_CREATED:       "PI Created",
+  SALES_ORDER:      "Sales Order",
+  // Order flow
+  PRODUCTION:       "In Production",
+  READY_DISPATCH:   "Ready for Dispatch",
+  DISPATCHED:       "Dispatched",
+  INSTALLATION:     "Installation Scheduled",
+  HANDOVER:         "Handover",
+  // Service
+  SERVICE_REQUEST:  "Service Request",
+  TICKET_OPEN:      "Ticket Open",
+  TICKET_CLOSED:    "Ticket Closed",
+  // Terminal
+  ON_HOLD:          "On Hold",
+  LOST:             "Lost",
 };
 
 export const STAGE_COLORS: Record<ContactStage, string> = {
-  LEAD: "bg-blue-100 text-blue-800",
-  PROSPECT: "bg-purple-100 text-purple-800",
-  VISIT_SCHEDULED: "bg-yellow-100 text-yellow-800",
-  VISITED: "bg-orange-100 text-orange-800",
-  NEGOTIATION: "bg-pink-100 text-pink-800",
-  CLIENT: "bg-green-100 text-green-800",
-  LOST: "bg-gray-100 text-gray-600",
+  ENQUIRY:          "bg-blue-100   text-blue-800",
+  PROSPECT:         "bg-violet-100 text-violet-800",
+  VISIT_SCHEDULED:  "bg-yellow-100 text-yellow-800",
+  VISITED:          "bg-amber-100  text-amber-800",
+  NEGOTIATION:      "bg-orange-100 text-orange-800",
+  PI_CREATED:       "bg-cyan-100   text-cyan-800",
+  SALES_ORDER:      "bg-sky-100    text-sky-800",
+  PRODUCTION:       "bg-indigo-100 text-indigo-800",
+  READY_DISPATCH:   "bg-purple-100 text-purple-800",
+  DISPATCHED:       "bg-fuchsia-100 text-fuchsia-800",
+  INSTALLATION:     "bg-lime-100   text-lime-800",
+  HANDOVER:         "bg-green-100  text-green-800",
+  SERVICE_REQUEST:  "bg-teal-100   text-teal-800",
+  TICKET_OPEN:      "bg-red-100    text-red-800",
+  TICKET_CLOSED:    "bg-emerald-100 text-emerald-800",
+  ON_HOLD:          "bg-stone-100  text-stone-600",
+  LOST:             "bg-gray-100   text-gray-600",
 };
 
 export interface ContactTag {

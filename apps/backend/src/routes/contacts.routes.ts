@@ -14,13 +14,23 @@ const router = Router();
 router.use(requireAuth);
 
 const STAGE_LABELS: Record<string, string> = {
-  LEAD: "Lead",
-  PROSPECT: "Prospect",
+  ENQUIRY:         "Enquiry",
+  PROSPECT:        "Prospect",
   VISIT_SCHEDULED: "Visit Scheduled",
-  VISITED: "Visited",
-  NEGOTIATION: "Negotiation",
-  CLIENT: "Client",
-  LOST: "Lost",
+  VISITED:         "Visited",
+  NEGOTIATION:     "Negotiation",
+  PI_CREATED:      "PI Created",
+  SALES_ORDER:     "Sales Order",
+  PRODUCTION:      "In Production",
+  READY_DISPATCH:  "Ready for Dispatch",
+  DISPATCHED:      "Dispatched",
+  INSTALLATION:    "Installation Scheduled",
+  HANDOVER:        "Handover",
+  SERVICE_REQUEST: "Service Request",
+  TICKET_OPEN:     "Ticket Open",
+  TICKET_CLOSED:   "Ticket Closed",
+  ON_HOLD:         "On Hold",
+  LOST:            "Lost",
 };
 
 async function sendTemplateToContact(phone: string, contactName: string, templateName: string, language = "en") {
@@ -90,7 +100,7 @@ const contactInputSchema = z.object({
   phone: z.string().min(6),
   email: z.string().email().optional().or(z.literal("")),
   source: z.enum(["MANUAL", "CRM_API", "EXHIBITION", "WEBSITE", "IMPORT"]).default("MANUAL"),
-  stage: z.enum(["LEAD", "PROSPECT", "VISIT_SCHEDULED", "VISITED", "NEGOTIATION", "CLIENT", "LOST"]).optional(),
+  stage: z.enum(["ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION","PI_CREATED","SALES_ORDER","PRODUCTION","READY_DISPATCH","DISPATCHED","INSTALLATION","HANDOVER","SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED","ON_HOLD","LOST"]).optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
@@ -122,7 +132,7 @@ router.post(
         phone,
         email: input.email || null,
         source: input.source,
-        stage: input.stage ?? "LEAD",
+        stage: input.stage ?? "ENQUIRY",
         notes: input.notes,
         tags: { connect: tagConnections },
       },
@@ -132,7 +142,7 @@ router.post(
     await recordAudit({ userId: req.user?.userId, action: "CONTACT_CREATED", description: `Contact "${contact.name}" created` });
 
     // Send onboarding template if configured
-    const onboarding = await (prisma as any).stageTemplate.findUnique({ where: { stage: "LEAD" } });
+    const onboarding = await (prisma as any).stageTemplate.findUnique({ where: { stage: "ENQUIRY" } });
     if (onboarding?.enabled && onboarding.templateName) {
       void sendTemplateToContact(phone, contact.name, onboarding.templateName, onboarding.language);
     }
@@ -268,7 +278,7 @@ router.post(
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const { ids, stage } = z.object({
       ids: z.array(z.string()).min(1).max(200),
-      stage: z.enum(["LEAD", "PROSPECT", "VISIT_SCHEDULED", "VISITED", "NEGOTIATION", "CLIENT", "LOST"]),
+      stage: z.enum(["ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION","PI_CREATED","SALES_ORDER","PRODUCTION","READY_DISPATCH","DISPATCHED","INSTALLATION","HANDOVER","SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED","ON_HOLD","LOST"]),
     }).parse(req.body);
 
     const contacts = await prisma.contact.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, phone: true, stage: true } });

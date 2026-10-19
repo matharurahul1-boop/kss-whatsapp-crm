@@ -57,12 +57,27 @@ enum ContactSource {
 }
 
 enum ContactStage {
-  LEAD
+  // Pre-sale pipeline
+  ENQUIRY
   PROSPECT
   VISIT_SCHEDULED
   VISITED
   NEGOTIATION
-  CLIENT
+  // Sales milestones
+  PI_CREATED
+  SALES_ORDER
+  // Order production & delivery
+  PRODUCTION
+  READY_DISPATCH
+  DISPATCHED
+  INSTALLATION
+  HANDOVER
+  // Post-sale service
+  SERVICE_REQUEST
+  TICKET_OPEN
+  TICKET_CLOSED
+  // Terminal
+  ON_HOLD
   LOST
 }
 

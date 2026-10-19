@@ -398,6 +398,14 @@ export default function SettingsPage() {
 
   function AutomationTab() {
     const { toast } = useToast();
+
+    const STAGE_GROUPS = [
+      { label: "Pre-sale Pipeline",       stages: ["ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION"] as ContactStage[] },
+      { label: "Sales Milestones",        stages: ["PI_CREATED","SALES_ORDER"] as ContactStage[] },
+      { label: "Order Production & Delivery", stages: ["PRODUCTION","READY_DISPATCH","DISPATCHED","INSTALLATION","HANDOVER"] as ContactStage[] },
+      { label: "Post-sale Service",       stages: ["SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED"] as ContactStage[] },
+      { label: "Terminal Stages",         stages: ["ON_HOLD","LOST"] as ContactStage[] },
+    ];
     const stages = Object.keys(STAGE_LABELS) as ContactStage[];
 
     const { data: templates } = useQuery({
@@ -481,20 +489,32 @@ export default function SettingsPage() {
     }
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Zap className="h-4 w-4" /> Stage Automation</CardTitle>
-          <CardDescription>
-            Choose which WhatsApp template is sent automatically when a contact is created or moves to a new stage.
-            Only <strong>APPROVED</strong> templates appear here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="divide-y p-0 px-6">
-          {stages.map((stage) => (
-            <StageRow key={stage} stage={stage} />
-          ))}
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-5">
+        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <Zap className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="text-xs text-foreground/70">
+            <p className="font-semibold text-foreground">Stage Automation</p>
+            <p className="mt-0.5">Configure which WhatsApp template auto-sends when a contact reaches each stage.
+            Only <strong>APPROVED</strong> templates appear in the dropdown.
+            The first stage (Enquiry) fires when a new contact is created.</p>
+          </div>
+        </div>
+
+        {STAGE_GROUPS.map((group) => (
+          <Card key={group.label} className="overflow-hidden">
+            <CardHeader className="border-b border-border/60 py-3 px-5">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                {group.label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y p-0 px-5">
+              {group.stages.map((stage) => (
+                <StageRow key={stage} stage={stage} />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
   }
 }
