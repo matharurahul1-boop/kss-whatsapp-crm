@@ -9,6 +9,7 @@ import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { maskSecret } from "../utils/mask";
 import { recordAudit } from "../lib/audit";
 import { env } from "../config/env";
+import { resetWhatsAppService } from "../services/whatsapp";
 
 const router = Router();
 router.use(requireAuth, requireManager);
@@ -67,6 +68,16 @@ router.put(
     const saved = existing
       ? await prisma.metaConfig.update({ where: { id: existing.id }, data })
       : await prisma.metaConfig.create({ data });
+
+    // Patch in-memory env so live API calls use the new credentials immediately
+    if (body.accessToken)  { process.env.WHATSAPP_ACCESS_TOKEN = body.accessToken;  env.accessToken = body.accessToken; }
+    if (body.appSecret)    { process.env.META_APP_SECRET = body.appSecret;           env.metaAppSecret = body.appSecret; }
+    if (body.wabaId)       { process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = body.wabaId; env.wabaId = body.wabaId; }
+    if (body.phoneNumberId){ process.env.WHATSAPP_PHONE_NUMBER_ID = body.phoneNumberId; env.phoneNumberId = body.phoneNumberId; }
+    if (body.appId)        { process.env.META_APP_ID = body.appId;                  env.metaAppId = body.appId; }
+
+    // Reset cached WhatsApp service so next call picks up new credentials
+    resetWhatsAppService();
 
     await recordAudit({ userId: req.user?.userId, action: "META_CONFIG_UPDATED", description: "Meta WhatsApp configuration updated" });
 

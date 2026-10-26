@@ -8,6 +8,10 @@ import { WhatsAppService } from "./WhatsAppService";
 
 let instance: WhatsAppService | null = null;
 
+export function resetWhatsAppService() {
+  instance = null;
+}
+
 export function getWhatsAppService(): WhatsAppService {
   if (!instance) {
     instance = env.metaMode === "live" ? new MetaWhatsAppService() : new MockWhatsAppService();
