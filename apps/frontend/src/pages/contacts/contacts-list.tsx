@@ -1,3 +1,6 @@
+import { createPortal } from "react-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { CampaignCost, formatInr } from "@/lib/billing-types";
 import { useState, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -8,7 +11,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Pagination } from "@/components/shared/pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +20,20 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/toast";
-import { api } from "@/lib/api";
+import { api, ApiRequestError } from "@/lib/api";
 import { formatPhone, cn } from "@/lib/utils";
 import { Contact, PaginatedResult, STAGE_LABELS, STAGE_COLORS, ContactStage } from "@/lib/types";
 import { ContactFormDialog } from "./contact-form-dialog";
 import { CsvImportDialog } from "./csv-import-dialog";
+
+interface BulkStagePreview {
+  selected: number; changed: number; unchanged: number; invalidPhones: number; messagesToSend: number;
+  templateName: string | null; automationEnabled: boolean; cost: CampaignCost | null; canApply: boolean; problem: string | null;
+}
+interface BulkStageResult {
+  updated: number; unchanged: number; sent: number; failed: number; skipped: number; templateName?: string | null;
+  results: { contactId: string; name: string; status: "SENT" | "FAILED"; reason?: string }[];
+}
 
 const ALL_STAGES = Object.keys(STAGE_LABELS) as ContactStage[];
 
@@ -42,6 +54,7 @@ export default function ContactsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStageOpen, setBulkStageOpen] = useState(false);
   const [pendingBulkStage, setPendingBulkStage] = useState<ContactStage | "">("");
+  const [bulkResult, setBulkResult] = useState<BulkStageResult | null>(null);
 
   const params = new URLSearchParams({ page: String(page), pageSize: "10" });
   if (search)      params.set("search", search);
@@ -62,17 +75,26 @@ export default function ContactsPage() {
     },
   });
 
+  const selectedKey = Array.from(selectedIds).sort();
+  const bulkPreview = useQuery({
+    queryKey: ["bulk-stage-preview", pendingBulkStage, selectedKey],
+    queryFn: () => api.post<BulkStagePreview>("/contacts/bulk-stage/preview", { ids: selectedKey, stage: pendingBulkStage }),
+    enabled: bulkStageOpen && !!pendingBulkStage && selectedIds.size > 0 && selectedIds.size <= 200,
+    refetchInterval: bulkStageOpen ? 15000 : false,
+  });
+
   const bulkStageMutation = useMutation({
     mutationFn: ({ ids, stage }: { ids: string[]; stage: ContactStage }) =>
-      api.post("/contacts/bulk-stage", { ids, stage }),
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["contacts"] });
-      toast({ title: `${vars.ids.length} contacts moved to ${STAGE_LABELS[vars.stage]}`, variant: "success" });
+      api.post<BulkStageResult>("/contacts/bulk-stage", { ids, stage }),
+    onSuccess: (result, vars) => {
+      for (const key of ["contacts", "dashboard-summary", "delivery-overview", "stage-funnel", "notifications", "conversations", "wallet", "wallet-summary", "balance-alert", "billing-report"]) queryClient.invalidateQueries({ queryKey: [key] });
+      setBulkResult(result);
+      toast({ title: result.updated + " contacts moved to " + STAGE_LABELS[vars.stage], description: result.sent + " messages sent; " + result.failed + " failed; " + result.unchanged + " already in this stage.", variant: result.failed ? "destructive" : "success" });
       setSelectedIds(new Set());
       setBulkStageOpen(false);
       setPendingBulkStage("");
     },
-    onError: () => toast({ title: "Bulk stage change failed", variant: "destructive" }),
+    onError: (error) => { bulkPreview.refetch(); toast({ title: error instanceof ApiRequestError ? error.message : "Could not complete the bulk update. Refresh contacts and notifications before retrying.", variant: "destructive" }); },
   });
 
   const pageIds = data?.items.map((c) => c.id) ?? [];
@@ -87,17 +109,19 @@ export default function ContactsPage() {
         return next;
       });
     } else {
+      if (new Set([...selectedIds, ...pageIds]).size > 200) { toast({ title: "Select up to 200 contacts per batch", variant: "destructive" }); return; }
       setSelectedIds((prev) => new Set([...prev, ...pageIds]));
     }
-  }, [allPageSelected, pageIds]);
+  }, [allPageSelected, pageIds, selectedIds, toast]);
 
   const toggleOne = useCallback((id: string) => {
+    if (!selectedIds.has(id) && selectedIds.size >= 200) { toast({ title: "Select up to 200 contacts per batch", variant: "destructive" }); return; }
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  }, []);
+  }, [selectedIds, toast]);
 
   const clearSelection = () => {
     setSelectedIds(new Set());
@@ -106,7 +130,7 @@ export default function ContactsPage() {
   };
 
   const applyBulkStage = () => {
-    if (!pendingBulkStage) return;
+    if (!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkStageMutation.isPending) return;
     bulkStageMutation.mutate({ ids: Array.from(selectedIds), stage: pendingBulkStage });
   };
 
@@ -126,6 +150,14 @@ export default function ContactsPage() {
           </>
         }
       />
+
+      {bulkResult && <Card><CardHeader><CardTitle>Bulk stage update result</CardTitle></CardHeader><CardContent className="flex flex-col gap-2 text-sm">
+        <p>{bulkResult.updated} stages updated · {bulkResult.unchanged} already in this stage · {bulkResult.sent} sent · {bulkResult.failed} failed · {bulkResult.skipped} without a message</p>
+        {bulkResult.templateName && <p>Template: {bulkResult.templateName}</p>}
+        {bulkResult.failed > 0 && <p className="text-destructive">Stages were updated, but some messages failed. Review the failures below; applying the same stage again will not resend messages.</p>}
+        <ul className="max-h-48 overflow-auto">{bulkResult.results.filter((result) => result.status === "FAILED").map((result) => <li key={result.contactId}>{result.name}: {result.reason}</li>)}</ul>
+        <Button variant="ghost" size="sm" onClick={() => setBulkResult(null)}>Dismiss result</Button>
+      </CardContent></Card>}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -157,21 +189,22 @@ export default function ContactsPage() {
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden p-0">
+      <Card className="min-w-0 max-w-full overflow-hidden p-0">
         {isLoading ? (
           <div className="p-5"><Skeleton className="h-64 w-full" /></div>
         ) : !data || data.items.length === 0 ? (
           <EmptyState icon={Users} title="No contacts found" description="Add your first contact or import a CSV file." />
         ) : (
           <>
-            <Table>
+            <Table className="table-fixed sm:table-auto">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10 pl-4">
+                  <TableHead className="w-10 px-2 sm:pl-4">
                     <button
                       onClick={toggleAll}
                       className="flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                      aria-label="Select all"
+                      aria-label="Select all contacts on this page"
+                      aria-pressed={allPageSelected}
                     >
                       {allPageSelected ? (
                         <CheckSquare className="h-4 w-4 text-primary" />
@@ -182,12 +215,12 @@ export default function ContactsPage() {
                       )}
                     </button>
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Stage</TableHead>
+                  <TableHead className="px-3 sm:px-4">Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                  <TableHead className="w-24 px-2 sm:w-auto sm:px-4">Stage</TableHead>
                   <TableHead className="hidden sm:table-cell">Budget</TableHead>
                   <TableHead className="hidden md:table-cell">Tags</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-12 px-1 text-right sm:w-auto sm:px-4"><span className="sr-only sm:not-sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,11 +231,12 @@ export default function ContactsPage() {
                       key={contact.id}
                       className={cn(isSelected && "bg-primary/5")}
                     >
-                      <TableCell className="pl-4">
+                      <TableCell className="px-2 sm:pl-4">
                         <button
                           onClick={() => toggleOne(contact.id)}
                           className="flex items-center justify-center text-muted-foreground transition-colors hover:text-primary"
                           aria-label={`Select ${contact.name}`}
+                          aria-pressed={isSelected}
                         >
                           {isSelected ? (
                             <CheckSquare className="h-4 w-4 text-primary" />
@@ -211,13 +245,14 @@ export default function ContactsPage() {
                           )}
                         </button>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="break-words px-3 sm:px-4">
                         <p className="font-medium">{contact.name}</p>
-                        {contact.email && <p className="text-xs text-muted-foreground">{contact.email}</p>}
+                        <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground sm:hidden">{formatPhone(contact.phone)}</p>
+                        {contact.email && <p className="hidden break-all text-xs text-muted-foreground sm:block">{contact.email}</p>}
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{formatPhone(contact.phone)}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_COLORS[contact.stage ?? "ENQUIRY"]}`}>
+                      <TableCell className="hidden font-mono text-sm sm:table-cell">{formatPhone(contact.phone)}</TableCell>
+                      <TableCell className="px-2 sm:px-4">
+                        <span className={`inline-flex max-w-full items-center justify-center whitespace-normal rounded-full px-2 py-1 text-center text-[11px] font-medium sm:px-2.5 sm:py-0.5 sm:text-xs ${STAGE_COLORS[contact.stage ?? "ENQUIRY"]}`}>
                           {STAGE_LABELS[contact.stage ?? "ENQUIRY"]}
                         </span>
                       </TableCell>
@@ -235,7 +270,7 @@ export default function ContactsPage() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-1 text-right sm:px-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
@@ -261,64 +296,28 @@ export default function ContactsPage() {
       </Card>
 
       {/* ── Floating Bulk Action Bar ─────────────────────────────────────── */}
-      {selectedIds.size > 0 && (
-        <div
-          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 animate-slide-up lg:bottom-6"
-          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-        >
-          <div className="glass flex min-w-[320px] items-center gap-3 rounded-2xl border border-border/60 px-4 py-3 shadow-float">
+      {selectedIds.size > 0 && typeof document !== "undefined" && createPortal(
+        <div className="bulk-contact-actions" aria-label={selectedIds.size + " contacts selected"}>
+          <div className="pointer-events-auto mx-auto flex w-full max-w-md animate-slide-up items-center gap-2 rounded-2xl border border-border/60 bg-card/95 px-3 py-3 shadow-float backdrop-blur-xl sm:gap-3 sm:px-4">
             {/* Count */}
             <div className="flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                 {selectedIds.size}
               </span>
-              <span className="text-sm font-medium text-foreground">selected</span>
+              <span className="hidden text-sm font-medium text-foreground min-[380px]:inline">selected</span>
             </div>
 
             <div className="h-5 w-px bg-border/60" />
 
-            {/* Stage picker */}
-            {bulkStageOpen ? (
-              <div className="flex flex-1 items-center gap-2">
-                <select
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  value={pendingBulkStage}
-                  onChange={(e) => setPendingBulkStage(e.target.value as ContactStage)}
-                >
-                  <option value="">Pick a stage…</option>
-                  {ALL_STAGES.map((s) => (
-                    <option key={s} value={s}>{STAGE_LABELS[s]}</option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  disabled={!pendingBulkStage || bulkStageMutation.isPending}
-                  onClick={applyBulkStage}
-                  className="shrink-0"
-                >
-                  {bulkStageMutation.isPending ? "Applying…" : "Apply"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setBulkStageOpen(false)} className="shrink-0 px-2">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setBulkStageOpen(true)}
-                className="flex-1 gap-1.5"
-              >
-                <Layers className="h-4 w-4" />
-                Change Stage
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            )}
+            <Button size="sm" variant="outline" onClick={() => { setPendingBulkStage(""); setBulkStageOpen(true); }} disabled={bulkStageMutation.isPending || selectedIds.size > 200} className="min-w-0 flex-1 gap-1.5">
+              <Layers className="h-4 w-4 shrink-0" /><span className="truncate">Change Stage</span>
+            </Button>
 
             <div className="h-5 w-px bg-border/60" />
 
             {/* Clear */}
             <button
+              disabled={bulkStageMutation.isPending}
               onClick={clearSelection}
               className="flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               aria-label="Clear selection"
@@ -326,8 +325,33 @@ export default function ContactsPage() {
               <X className="h-4 w-4" />
             </button>
           </div>
-        </div>
+        </div>, document.body
       )}
+
+      <Dialog open={bulkStageOpen} onOpenChange={(open) => { if (!bulkStageMutation.isPending) setBulkStageOpen(open); }}>
+        <DialogContent><DialogHeader><DialogTitle>Change stage for selected contacts</DialogTitle></DialogHeader>
+          <p className="text-sm">{selectedIds.size} contacts selected across pages. Up to 200 per batch.</p>
+          <label htmlFor="bulk-contact-stage" className="text-sm font-medium">New stage</label>
+          <select id="bulk-contact-stage" className="rounded-lg border border-border bg-background px-3 py-2 text-sm" value={pendingBulkStage} disabled={bulkStageMutation.isPending} onChange={(event) => setPendingBulkStage(event.target.value as ContactStage)}>
+            <option value="">Pick a stage…</option>{ALL_STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+          </select>
+          {selectedIds.size > 200 && <p className="text-sm text-destructive">Select at most 200 contacts.</p>}
+          {pendingBulkStage && bulkPreview.isFetching && <p className="text-sm">Checking stage template and wallet…</p>}
+          {pendingBulkStage && bulkPreview.isError && <p className="text-sm text-destructive">{bulkPreview.error instanceof Error ? bulkPreview.error.message : "Could not load stage preview"}</p>}
+          {pendingBulkStage && bulkPreview.data && <div className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">
+            <p>{bulkPreview.data.changed} stages will change; {bulkPreview.data.unchanged} already in this stage and will not receive another message.</p>
+            {bulkPreview.data.automationEnabled ? <><p className="font-medium">Template: {bulkPreview.data.templateName}</p><p>{bulkPreview.data.messagesToSend} messages will be sent automatically after updating.</p></> : <p>No enabled template is assigned to this stage. Only the stage will update; no message will be sent.</p>}
+            {bulkPreview.data.invalidPhones > 0 && <p>{bulkPreview.data.invalidPhones} invalid phone numbers: stage updates only, no message.</p>}
+            {bulkPreview.data.cost && <p>Estimated cost: {bulkPreview.data.cost.estimatedCost == null ? "Rate not configured" : formatInr(bulkPreview.data.cost.estimatedCost)} · Balance: {formatInr(bulkPreview.data.cost.availableBalance)}</p>}
+            {bulkPreview.data.problem && <p className="text-destructive">{bulkPreview.data.problem}</p>}
+          </div>}
+          <DialogFooter><Button variant="outline" disabled={bulkStageMutation.isPending} onClick={() => setBulkStageOpen(false)}>Cancel</Button>
+            <Button disabled={!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkPreview.isError || selectedIds.size > 200 || bulkStageMutation.isPending} loading={bulkStageMutation.isPending} onClick={applyBulkStage}>
+              {bulkStageMutation.isPending ? "Updating and sending…" : bulkPreview.data?.messagesToSend ? "Update stage & send" : "Update stage"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ContactFormDialog open={formOpen} onOpenChange={setFormOpen} contact={editContact} />
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />

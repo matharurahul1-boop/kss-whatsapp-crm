@@ -61,6 +61,10 @@ router.get(
   })
 );
 
+router.put("/:id/rate", asyncHandler(async () => {
+  throw new ApiError(410, "CATEGORY_PRICING_REQUIRED", "Set Utility, Marketing and Authentication prices in Wallet & Billing");
+}));
+
 function validateTemplateInput(input: z.infer<typeof templateInputSchema>): void {
   if (!isValidTemplateName(input.name)) {
     throw new ApiError(400, "INVALID_NAME", "Template name must be snake_case, 3-64 characters, letters/numbers/underscores only");
@@ -200,7 +204,7 @@ router.post(
   })
 );
 
-// Pull real templates from Meta API, replacing all local templates
+// Pull real templates from Meta API, preserving local prices.
 router.post(
   "/pull",
   asyncHandler(async (req: AuthenticatedRequest, res) => {
@@ -211,14 +215,18 @@ router.post(
 
     const metaTemplates = await service.fetchTemplates();
 
-    // Delete all existing templates (clear demo/seeded data)
-    await prisma.whatsAppTemplate.deleteMany();
-
-    // Insert real templates from Meta
+    // Update provider content while preserving local prices and relations.
     const created = await Promise.all(
       metaTemplates.map((t) =>
-        prisma.whatsAppTemplate.create({
-          data: {
+        prisma.whatsAppTemplate.upsert({
+          where: { name: t.name },
+          update: {
+            category: t.category as never, language: t.language,
+            status: (["APPROVED", "REJECTED", "PENDING", "DISABLED"].includes(t.status) ? t.status : "DRAFT") as never,
+            rejectionReason: t.rejectionReason ?? null, headerType: (t.headerType ?? "NONE") as never,
+            headerContent: t.headerContent ?? null, body: t.body, footer: t.footer ?? null, variableCount: t.variableCount,
+          },
+          create: {
             name: t.name,
             category: t.category as never,
             language: t.language,

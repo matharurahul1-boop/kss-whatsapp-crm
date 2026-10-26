@@ -1,3 +1,4 @@
+import { requireManager } from "../middleware/requireManager";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -8,7 +9,7 @@ import { generateApiKey } from "../utils/apiKey";
 import { ApiError } from "../middleware/errorHandler";
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requireManager);
 
 router.get(
   "/",

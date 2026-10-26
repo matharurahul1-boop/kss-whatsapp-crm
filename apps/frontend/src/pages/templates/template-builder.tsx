@@ -143,6 +143,8 @@ export default function TemplateBuilderPage() {
         }
       />
 
+      <p className="text-sm text-muted-foreground">Each send uses the selected category’s price from Wallet & Billing. The category rate applies to all templates, with or without media.</p>
+
       {isLocked && (
         <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
           This template is approved and locked from editing. Duplicate it to make changes.

@@ -127,7 +127,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
-  role         UserRole @default(ADMIN)
+  role         UserRole @default(AGENT)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -180,6 +180,7 @@ model WhatsAppTemplate {
   buttons         Json?
   rejectionReason String?
   variableCount   Int              @default(0)
+  rateInr         Decimal?         @db.Decimal(14, 4)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -218,6 +219,54 @@ model Contact {
   @@index([phone])
   @@index([source])
   @@index([stage])
+}
+
+enum WalletTxType {
+  TOPUP
+  DEBIT
+  REFUND
+}
+
+model Wallet {
+  id           String              @id @default(cuid())
+  balance      Decimal             @default(0) @db.Decimal(14, 4)
+  currency     String              @default("INR")
+  lowBalanceThreshold Decimal      @default(100) @db.Decimal(14, 4)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id             String       @id @default(cuid())
+  walletId       String
+  wallet         Wallet       @relation(fields: [walletId], references: [id])
+  type           WalletTxType
+  amount         Decimal      @db.Decimal(14, 4)
+  balanceAfter   Decimal      @db.Decimal(14, 4)
+  description    String
+  messageId      String?
+  refunded       Boolean      @default(false)
+  category       TemplateCategory?
+  templateName   String?
+  notificationId String?
+  createdById    String?
+  createdAt      DateTime     @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([walletId, category, createdAt])
+  @@index([messageId])
+}
+
+model MessageRate {
+  id        String           @id @default(cuid())
+  category  TemplateCategory
+  hasMedia  Boolean          @default(false)
+  rateInr   Decimal          @db.Decimal(14, 4)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([category, hasMedia])
 }
 
 model StageTemplate {

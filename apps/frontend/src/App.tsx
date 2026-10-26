@@ -15,6 +15,7 @@ import ConversationsPage from "@/pages/conversations";
 import SendNotificationPage from "@/pages/send-notification";
 import ApiIntegrationPage from "@/pages/api-integration";
 import LogsPage from "@/pages/logs";
+import WalletPage from "@/pages/wallet";
 import SettingsPage from "@/pages/settings";
 
 export default function App() {
@@ -41,9 +42,10 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/conversations" element={<ConversationsPage />} />
         <Route path="/send" element={<SendNotificationPage />} />
-        <Route path="/api-integration" element={<ApiIntegrationPage />} />
-        <Route path="/logs" element={<LogsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/api-integration" element={<ProtectedRoute allowedRoles={["MANAGER"]}><ApiIntegrationPage /></ProtectedRoute>} />
+        <Route path="/logs" element={<ProtectedRoute allowedRoles={["MANAGER"]}><LogsPage /></ProtectedRoute>} />
+        <Route path="/wallet" element={<ProtectedRoute allowedRoles={["MANAGER"]}><WalletPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute allowedRoles={["MANAGER"]}><SettingsPage /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Route>
 

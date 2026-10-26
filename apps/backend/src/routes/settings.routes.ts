@@ -1,3 +1,4 @@
+import { requireManager } from "../middleware/requireManager";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -10,7 +11,7 @@ import { recordAudit } from "../lib/audit";
 import { env } from "../config/env";
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requireManager);
 
 router.get(
   "/meta-config",

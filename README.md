@@ -222,3 +222,38 @@ Once the frontend is running, open it in Chrome/Edge and use the browser's "Inst
 - `MetaWhatsAppService` is a real Meta Graph API integration but has not been exercised against a live Meta account as part of this build — verify against your own WABA before using `META_MODE=live` in production.
 - CSV import parsing is a minimal client-side parser suitable for straightforward CSV files; it does not handle quoted commas/newlines inside fields.
 - The in-process campaign queue is intentionally simple (batched `setImmediate`-style processing with a short delay between batches) rather than a durable job queue like BullMQ/Redis — sufficient for demo/single-instance use, called out in the spec as an acceptable approach.
+
+### Wallet and billing
+
+For an existing database without billing tables, run the additive SQL in `apps/backend/prisma/wallet_billing.sql` once, then regenerate Prisma and deploy both apps. This setup was applied to the configured database on 2026-10-20. Do not rerun it on an initialized database.
+
+The shared INR wallet starts at zero. Managers record received payments in Wallet & Billing; this is an internal credit ledger, not a payment gateway or a recharge of the Meta account. Admins see read-only navbar balances and low-balance alerts; wallet details are Manager-only. Only Admins manage roles; public signups start as Agents.
+
+Category prices are managed in Wallet & Billing → Configure category prices: one rate each for Utility, Marketing and Authentication, shared by all templates regardless of media. Existing text-category rates are retained. No per-template price is used. Missing category rates block sending. Managers can change prices; changes apply only to future sends. All template send paths reserve the category cost atomically and refund failed sends once. Prices are internal and do not sync automatically from Meta. The older per-template price column and historical media-rate rows are retained for compatibility but do not control billing.
+
+
+A process termination between reserving credit and recording a provider response can leave a debit requiring reconciliation; the ledger does not automatically reconcile Meta invoices.
+
+Settings, API Integration and Logs are Manager-only (Admin and Agent are excluded). Desktop/mobile navigation and direct frontend routes enforce this; settings, API-key management, triggers and stage-automation APIs check the current database role. Wallet permissions are separate.
+
+### Alerts, campaign estimates and reports
+
+Apply `apps/backend/prisma/billing_features.sql` once before deploying this release, then regenerate Prisma. The additive setup preserves balances, defaults the alert threshold to INR 100, and backfills recognizable historic billing categories. Unknown historical categories remain visible as UNKNOWN.
+
+Managers configure the low-balance threshold in Wallet & Billing. The in-app bell polls every 15 seconds while open; one toast appears per low-balance episode per session. A zero threshold disables alerts. No email/WhatsApp is sent. Billing reports and exports are Manager-only.
+
+Campaign review and saved campaign detail show valid/pending recipient counts, current category rate, total estimate, balance and shortfall. Start validates balance again; each message still checks credit atomically, so simultaneous sends or rate changes can affect the final spend.
+
+Billing reports use inclusive India dates (Asia/Kolkata), at most 366 days. Gross charges, refunds and top-ups are grouped by their transaction posting date and saved category snapshot. Sent messages means provider-accepted sends, including ones that may fail later; charged attempts include immediate failures. Net spending is gross minus posted refunds. Category filters exclude top-ups. Excel exports contain numeric daily rows and a summary sheet; PDF exports repeat headers and page numbers.
+
+Admins and Managers both receive low-balance bell/toast alerts and see lifetime top-ups, net usage and available balance in the top navbar (15-second refresh). Net usage is gross debits minus refunds; totals are read in a consistent database snapshot. Alert configuration, reports, Settings, API Integration and Logs remain Manager-only.
+
+Wallet & Billing financial details and changes are Manager-only. Admins retain read-only navbar totals and low-balance notifications, without clickable wallet links; direct wallet URLs and financial APIs are blocked. Existing user-role administration permissions are unchanged.
+
+### Bulk contact stage updates
+
+Contacts supports selecting up to 200 leads across pages. Change Stage opens a review dialog showing unchanged leads, the enabled assigned template, recipient count and category-based wallet estimate. Manager configures the mapping in Settings → Stage Automation. Without an enabled mapping, the dialog explicitly offers a stage-only update. Invalid phone numbers are skipped for messages.
+
+The backend validates selected contacts, approved templates and wallet funds before updating. Name-only stage templates support zero variables or contact name in {{1}}; incompatible templates are blocked. An atomic UPDATE RETURNING claims changed leads so unchanged leads and concurrent duplicate stage requests do not send again. Queued notifications and the stage audit are saved together, then sends run in batches of five using the shared wallet billing/refund service. Results report updated, unchanged, sent, failed and skipped counts. Failed sends do not undo stage changes; reapplying the same stage does not resend them.
+
+For databases with the legacy LEAD stage mapping, apply `apps/backend/prisma/align_stage_template.sql` to retain that automation under ENQUIRY. This was applied to the configured database without changing contact stages.

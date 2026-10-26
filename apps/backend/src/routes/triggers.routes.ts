@@ -1,3 +1,4 @@
+import { requireManager } from "../middleware/requireManager";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -7,7 +8,7 @@ import { getWhatsAppService } from "../services/whatsapp";
 import { recordOutboundMessage } from "../services/conversationService";
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requireManager);
 
 /* ── Trigger definitions (source of truth) ──────────────────────────── */
 export const TRIGGER_DEFS = [

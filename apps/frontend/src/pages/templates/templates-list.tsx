@@ -104,7 +104,7 @@ export default function TemplatesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Templates"
-        description="Create and manage WhatsApp message templates."
+        description="Create and manage WhatsApp message templates. Each send uses the category price configured in Wallet & Billing."
         actions={
           <>
             <Button variant="outline" onClick={() => pullMutation.mutate()} loading={pullMutation.isPending}>

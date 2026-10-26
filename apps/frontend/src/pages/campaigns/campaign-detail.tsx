@@ -1,3 +1,5 @@
+import { CampaignCost } from "@/lib/billing-types";
+import { CampaignCostCard } from "@/components/shared/campaign-cost-card";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,8 +45,12 @@ export default function CampaignDetailPage() {
     refetchInterval: (q) => (q.state.data?.campaign.status === "PROCESSING" ? 3000 : false),
   });
 
+  const canStart = data?.campaign.status === "DRAFT" || data?.campaign.status === "SCHEDULED";
+  const cost = useQuery({ queryKey: ["campaign-cost", id], queryFn: () => api.get<CampaignCost>("/campaigns/" + id + "/cost-preview"), enabled: !!id && canStart, refetchInterval: canStart ? 15000 : false });
+
   const startMutation = useMutation({
     mutationFn: () => api.post(`/campaigns/${id}/start`),
+    onError: (error) => { cost.refetch(); toast({ title: error instanceof Error ? error.message : "Could not start campaign", variant: "destructive" }); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaign", id] });
       toast({ title: "Campaign started", variant: "success" });
@@ -84,7 +90,7 @@ export default function CampaignDetailPage() {
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
             {(campaign.status === "DRAFT" || campaign.status === "SCHEDULED") && (
-              <Button onClick={() => startMutation.mutate()} loading={startMutation.isPending}>
+              <Button disabled={!cost.data?.canSend || cost.isFetching || cost.isError} onClick={() => startMutation.mutate()} loading={startMutation.isPending}>
                 <Play className="h-4 w-4" /> Start Campaign
               </Button>
             )}
@@ -101,6 +107,8 @@ export default function CampaignDetailPage() {
         <StatusBadge status={campaign.status} />
         <span className="text-sm text-muted-foreground">Template: <Link to={`/templates/${campaign.templateId}/edit`} className="text-primary hover:underline">{campaign.template?.name}</Link></span>
       </div>
+
+      {canStart && <CampaignCostCard data={cost.data} loading={cost.isFetching} error={cost.isError} />}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Total Recipients" value={campaign.totalRecipients} />

@@ -48,7 +48,7 @@ router.post(
 
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role: "ADMIN" },
+      data: { name, email, passwordHash, role: "AGENT" },
     });
 
     const token = signToken({ userId: user.id, email: user.email, role: user.role });

@@ -1,3 +1,5 @@
+import { CampaignCost } from "@/lib/billing-types";
+import { CampaignCostCard } from "@/components/shared/campaign-cost-card";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -44,6 +46,12 @@ export default function CampaignWizardPage() {
     return contacts.items.filter((c) => selectedContactIds.includes(c.id));
   }, [contacts, audienceType, selectedTags, selectedContactIds]);
 
+  const audience = { type: audienceType, tags: audienceType === "TAGS" ? selectedTags : undefined, contactIds: audienceType === "MANUAL_SELECTION" ? selectedContactIds : undefined };
+  const cost = useQuery({ queryKey: ["campaign-cost", templateId, JSON.stringify(audience)],
+    queryFn: () => api.post<CampaignCost>("/campaigns/preview/cost", { templateId, audience }),
+    enabled: !!templateId && step === 4, refetchInterval: step === 4 ? 15000 : false,
+  });
+
   const createMutation = useMutation({
     mutationFn: () =>
       api.post<Campaign>("/campaigns", {
@@ -58,7 +66,8 @@ export default function CampaignWizardPage() {
         variableMap,
       }),
     onSuccess: async (campaign) => {
-      await api.post(`/campaigns/${campaign.id}/start`);
+      try { await api.post(`/campaigns/${campaign.id}/start`); }
+      catch (err) { toast({ title: "Campaign saved as draft", description: err instanceof Error ? err.message : "Could not start campaign", variant: "destructive" }); navigate(`/campaigns/${campaign.id}`); return; }
       toast({ title: "Campaign started", description: `"${campaign.name}" is now processing.`, variant: "success" });
       navigate(`/campaigns/${campaign.id}`);
     },
@@ -212,7 +221,8 @@ export default function CampaignWizardPage() {
               <SummaryRow label="Campaign Name" value={name} />
               <SummaryRow label="Template" value={selectedTemplate?.name ?? "-"} />
               <SummaryRow label="Audience Type" value={audienceType.replace("_", " ")} />
-              <SummaryRow label="Recipients" value={String(audiencePreview.length)} />
+              <SummaryRow label="Recipients" value={cost.data ? String(cost.data.recipients) : "Checking…"} />
+              <CampaignCostCard data={cost.data} loading={cost.isFetching} error={cost.isError} />
               <div className="rounded-lg bg-[#e5ded5] p-4">
                 <div className="rounded-lg bg-white p-3 shadow-sm">
                   <p className="whitespace-pre-wrap text-sm text-neutral-800">
@@ -235,7 +245,7 @@ export default function CampaignWizardPage() {
             Next <ArrowRight className="h-4 w-4" />
           </Button>
         ) : (
-          <Button loading={createMutation.isPending} onClick={() => createMutation.mutate()}>
+          <Button disabled={!cost.data?.canSend || cost.isFetching || cost.isError} loading={createMutation.isPending} onClick={() => createMutation.mutate()}>
             Start Campaign
           </Button>
         )}

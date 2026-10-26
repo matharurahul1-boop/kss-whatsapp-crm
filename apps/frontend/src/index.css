@@ -158,8 +158,8 @@
   to   { transform: translateY(0);    opacity: 1; }
 }
 @keyframes fade-in {
-  from { opacity: 0; transform: scale(0.97); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 @keyframes pulse-ring {
   0%   { box-shadow: 0 0 0 0   hsl(var(--primary) / 0.4); }
@@ -170,3 +170,51 @@
 .animate-slide-up  { animation: slide-up 0.25s ease-out both; }
 .animate-fade-in   { animation: fade-in  0.2s  ease-out both; }
 .animate-pulse-ring{ animation: pulse-ring 1.5s ease-out infinite; }
+
+@layer components {
+  .app-shell {
+    background-image: radial-gradient(ellipse at 0% 0%, hsl(var(--accent) / 0.35), transparent 55%), radial-gradient(ellipse at 100% 100%, hsl(var(--primary) / 0.035), transparent 50%);
+  }
+}
+
+/* Body-level portal: fixed actions stay clear of animated/scrolling page containers. */
+.bulk-contact-actions {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(5rem + max(0.75rem, env(safe-area-inset-bottom, 0px)));
+  z-index: 40;
+  pointer-events: none;
+}
+@media (min-width: 1024px) {
+  .bulk-contact-actions {
+    left: calc(16rem + 2.5rem);
+    right: 1.25rem;
+    bottom: 1.5rem;
+  }
+}
+
+/* Reserve space for selected-contact actions rather than covering the last table row. */
+body:has(.bulk-contact-actions) .scroll-area {
+  margin-bottom: calc(9.5rem + max(0.75rem, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: 1.5rem;
+}
+@media (min-width: 1024px) {
+  body:has(.bulk-contact-actions) .scroll-area { margin-bottom: 5rem; }
+}
+/* Keep all three wallet values readable on narrow phones. */
+@media (max-width: 399px) {
+  .app-topbar {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 4rem;
+    padding: 0.5rem;
+  }
+  .app-topbar .topbar-actions { display: contents; }
+  .app-topbar .topbar-menu { grid-column: 1; grid-row: 1; justify-self: start; }
+  .app-topbar .wallet-alert { grid-column: 2; grid-row: 1; }
+  .app-topbar .topbar-profile { grid-column: 3; grid-row: 1; }
+  .app-topbar .wallet-summary { grid-column: 1 / -1; grid-row: 2; width: 100%; max-width: none; }
+}

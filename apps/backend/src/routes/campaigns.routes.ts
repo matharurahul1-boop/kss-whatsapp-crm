@@ -1,3 +1,4 @@
+import { estimateCampaignCost, estimateExistingCampaign } from "../services/campaignCostService";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -115,6 +116,20 @@ router.post(
   })
 );
 
+router.get("/:id/cost-preview", asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await estimateExistingCampaign(req.params.id) });
+}));
+
+router.post("/preview/cost", asyncHandler(async (req, res) => {
+  const input = z.object({ templateId: z.string(), audience: audienceSchema }).parse(req.body);
+  const template = await prisma.whatsAppTemplate.findUnique({ where: { id: input.templateId } });
+  if (!template) throw new ApiError(404, "TEMPLATE_NOT_FOUND", "Template not found");
+  if (template.status !== "APPROVED") throw new ApiError(400, "TEMPLATE_NOT_APPROVED", "Only approved templates can be used in campaigns");
+  const contacts = await resolveAudienceContacts(input.audience);
+  const recipients = contacts.filter((contact) => isValidPhone(normalizePhone(contact.phone))).length;
+  res.json({ success: true, data: await estimateCampaignCost(template.category, recipients) });
+}));
+
 router.post(
   "/:id/start",
   asyncHandler(async (req: AuthenticatedRequest, res) => {
@@ -124,6 +139,10 @@ router.post(
       throw new ApiError(400, "INVALID_STATE", "Only draft or scheduled campaigns can be started");
     }
 
+    const preview = await estimateExistingCampaign(campaign.id);
+    if (preview.rateInr == null) throw new ApiError(400, "RATE_MISSING", "Set the category price before starting this campaign");
+    if (preview.recipients === 0) throw new ApiError(400, "EMPTY_AUDIENCE", "No pending recipients remain");
+    if (!preview.canSend) throw new ApiError(402, "INSUFFICIENT_BALANCE", "Campaign needs ₹" + preview.estimatedCost + "; available ₹" + preview.availableBalance + ". Top up ₹" + preview.shortfall + " before starting.");
     enqueueCampaign(campaign.id);
 
     await recordAudit({ userId: req.user?.userId, action: "CAMPAIGN_STARTED", description: `Campaign "${campaign.name}" started` });

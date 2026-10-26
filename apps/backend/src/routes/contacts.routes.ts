@@ -1,3 +1,5 @@
+import { bulkStageSchema, previewBulkStage, applyBulkStage } from "../services/bulkStageService";
+import { requireManager } from "../middleware/requireManager";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
@@ -12,6 +14,7 @@ import { recordOutboundMessage } from "../services/conversationService";
 
 const router = Router();
 router.use(requireAuth);
+router.use("/stage-templates", requireManager);
 
 const STAGE_LABELS: Record<string, string> = {
   ENQUIRY:         "Enquiry",
@@ -278,38 +281,13 @@ router.post(
   })
 );
 
-// Bulk stage change
-router.post(
-  "/bulk-stage",
-  asyncHandler(async (req: AuthenticatedRequest, res) => {
-    const { ids, stage } = z.object({
-      ids: z.array(z.string()).min(1).max(200),
-      stage: z.enum(["ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION","PI_CREATED","SALES_ORDER","PRODUCTION","READY_DISPATCH","DISPATCHED","INSTALLATION","HANDOVER","SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED","ON_HOLD","LOST"]),
-    }).parse(req.body);
-
-    const contacts = await prisma.contact.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, phone: true, stage: true } });
-
-    await prisma.contact.updateMany({ where: { id: { in: ids } }, data: { stage } });
-
-    // Send stage template to contacts whose stage actually changed
-    const stageTpl = await (prisma as any).stageTemplate.findUnique({ where: { stage } });
-    if (stageTpl?.enabled && stageTpl.templateName) {
-      for (const c of contacts) {
-        if (c.stage !== stage) {
-          void sendTemplateToContact(c.phone, c.name, stageTpl.templateName, stageTpl.language);
-        }
-      }
-    }
-
-    await recordAudit({
-      userId: req.user?.userId,
-      action: "CONTACTS_BULK_STAGE",
-      description: `${contacts.length} contacts moved to ${STAGE_LABELS[stage] ?? stage}`,
-    });
-
-    res.json({ success: true, data: { updated: contacts.length } });
-  })
-);
+// Preview the stage assignment, automatic template and wallet cost before applying.
+router.post("/bulk-stage/preview", asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await previewBulkStage(bulkStageSchema.parse(req.body)) });
+}));
+router.post("/bulk-stage", asyncHandler(async (req: AuthenticatedRequest, res) => {
+  res.json({ success: true, data: await applyBulkStage(bulkStageSchema.parse(req.body), req.user!.userId) });
+}));
 
 // Stage templates config routes
 router.get(

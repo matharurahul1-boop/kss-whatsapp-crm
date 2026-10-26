@@ -1,3 +1,4 @@
+import { refundTemplateCost } from "./walletService";
 import { prisma } from "../lib/prisma";
 
 type NotificationStatus = "QUEUED" | "SENT" | "DELIVERED" | "READ" | "FAILED";
@@ -31,6 +32,11 @@ const RECIPIENT_STATUS_MAP: Record<DeliveryEventType, RecipientStatus> = {
 // Applies a delivery status event idempotently. Duplicate webhook deliveries
 // (same eventKey) are detected via the unique WebhookEvent record and skipped.
 export async function applyDeliveryEvent(input: ApplyEventInput): Promise<{ applied: boolean }> {
+  // Refund even if the notification has not yet been persisted or the event is replayed.
+  if (input.eventType === "failed") {
+    const debit = await prisma.walletTransaction.findFirst({ where: { messageId: input.messageId, type: "DEBIT", refunded: false } });
+    if (debit) await refundTemplateCost(debit.id);
+  }
   const existing = await prisma.webhookEvent.findUnique({ where: { eventKey: input.eventKey } });
   if (existing) {
     return { applied: false };

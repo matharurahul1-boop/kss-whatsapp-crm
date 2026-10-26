@@ -1,7 +1,9 @@
+import { useAuth } from "@/lib/auth-context";
+import { canAccessManagerScreens, MANAGER_SCREEN_PATHS } from "@/lib/permissions";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, MessageCircle, FileText, Users, Send,
-  Bell, Code2, ScrollText, Settings, Megaphone,
+  Wallet, Bell, Code2, ScrollText, Settings, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,13 +17,16 @@ const NAV_ITEMS = [
   { to: "/notifications",   label: "Notifications",   icon: Bell,            group: "tools" },
   { to: "/api-integration", label: "API Integration", icon: Code2,           group: "tools" },
   { to: "/logs",            label: "Logs",            icon: ScrollText,      group: "system" },
+  { to: "/wallet", label: "Wallet & Billing", icon: Wallet, group: "system" },
   { to: "/settings",        label: "Settings",        icon: Settings,        group: "system" },
 ];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const main   = NAV_ITEMS.filter((i) => i.group === "main");
-  const tools  = NAV_ITEMS.filter((i) => i.group === "tools");
-  const system = NAV_ITEMS.filter((i) => i.group === "system");
+  const { user } = useAuth();
+  const visibleItems = NAV_ITEMS.filter((item) => !MANAGER_SCREEN_PATHS.includes(item.to) || canAccessManagerScreens(user?.role));
+  const main   = visibleItems.filter((i) => i.group === "main");
+  const tools  = visibleItems.filter((i) => i.group === "tools");
+  const system = visibleItems.filter((i) => i.group === "system");
 
   const renderItem = (item: (typeof NAV_ITEMS)[0]) => (
     <NavLink
@@ -43,7 +48,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 
   return (
-    <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
+    <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
       <div className="flex flex-col gap-0.5">
         <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
           Main
@@ -70,9 +75,9 @@ export { NAV_ITEMS };
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border/50 bg-card shadow-card lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-3xl border border-border/60 bg-card/95 shadow-float backdrop-blur-xl lg:flex">
       {/* Brand header */}
-      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border/50 px-5">
+      <div className="mx-3 flex h-20 shrink-0 items-center gap-3 border-b border-border/50 px-2">
         {/* KSS espresso logomark */}
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
           <MessageCircle className="h-4 w-4" />
@@ -89,7 +94,7 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 border-t border-border/50 px-5 py-3">
+      <div className="mx-3 shrink-0 border-t border-border/50 px-2 py-4">
         <p className="text-[10px] text-muted-foreground/40">v1.0 · KSS Interiors, Gurgaon</p>
       </div>
     </aside>

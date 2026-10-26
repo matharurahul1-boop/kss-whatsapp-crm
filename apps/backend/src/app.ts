@@ -1,3 +1,4 @@
+import billingRoutes from "./routes/billing.routes";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -20,6 +21,7 @@ import conversationsRoutes from "./routes/conversations.routes";
 import uploadRoutes from "./routes/upload.routes";
 import v1Routes from "./routes/v1";
 import triggersRoutes from "./routes/triggers.routes";
+import walletRoutes from "./routes/wallet.routes";
 
 export function createApp() {
   const app = express();
@@ -51,6 +53,8 @@ export function createApp() {
   app.use("/api/upload", uploadRoutes);
   app.use("/api/v1", v1Routes);
   app.use("/api/triggers", triggersRoutes);
+  app.use("/api/wallet", walletRoutes);
+  app.use("/api/billing", billingRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

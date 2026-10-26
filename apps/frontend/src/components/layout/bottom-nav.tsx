@@ -13,11 +13,11 @@ const ITEMS = [
 export function BottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      className="fixed left-3 right-3 z-40 mx-auto max-w-lg lg:hidden"
+      style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
     >
       {/* warm cream glass effect matching KSS brand */}
-      <div className="border-t border-border/50 bg-card/90 shadow-float backdrop-blur-xl">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/95 shadow-float backdrop-blur-xl">
         <div className="flex h-16 items-center justify-around px-1">
           {ITEMS.map((item) => (
             <NavLink
