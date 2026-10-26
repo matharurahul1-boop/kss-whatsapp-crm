@@ -122,12 +122,12 @@ export default function DashboardPage() {
         description="Overview of your WhatsApp notification activity for KSS Interiors."
         actions={
           <>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="shadow-sm hover:shadow transition-shadow">
               <Link to="/campaigns/new">
                 <Plus className="h-4 w-4" /> Create Campaign
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="btn-3d">
               <Link to="/send">
                 <Send className="h-4 w-4" /> Send Notification
               </Link>
@@ -136,111 +136,113 @@ export default function DashboardPage() {
         }
       />
 
-      {/* ── Top stat cards ── */}
+      {/* ── Top stat cards — colored metric tiles ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
-          : cards.map((card) => (
-              <Card key={card.label}>
-                <CardContent className="flex items-start justify-between p-5">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
-                    <p className="mt-1.5 text-2xl font-semibold">{card.value}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{card.sub}</p>
+          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)
+          : cards.map((card, i) => {
+              const variants = ["metric-tile-brown", "metric-tile-blue", "metric-tile-green", "metric-tile-rose"];
+              return (
+                <div key={card.label} className={`metric-tile ${variants[i]}`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest opacity-70">{card.label}</p>
+                      <p className="mt-2 text-3xl font-bold tracking-tight">{card.value}</p>
+                      <p className="mt-1 text-xs opacity-65">{card.sub}</p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm shadow-inner">
+                      <card.icon className="h-5 w-5" />
+                    </div>
                   </div>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                    <card.icon className="h-5 w-5" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
       </div>
 
       {/* ── Pipeline KPI cards ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-start justify-between p-5">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Contacts</p>
-              <p className="mt-1.5 text-2xl font-semibold">{funnelData?.totalContacts ?? "—"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Across all stages</p>
+        {[
+          {
+            label: "Total Contacts",
+            value: funnelData?.totalContacts ?? "—",
+            sub: "Across all stages",
+            icon: Users,
+            variant: "metric-tile-purple",
+          },
+          {
+            label: "Pipeline Value",
+            value: funnelData ? formatCurrency(funnelData.totalPipelineValue) : "—",
+            sub: "Sum of all budgets",
+            icon: IndianRupee,
+            variant: "metric-tile-amber",
+          },
+          {
+            label: "Conversion Rate",
+            value: funnelData && funnelData.totalContacts > 0
+              ? `${((stages.find((s) => s.stage === "HANDOVER")?.count ?? 0) / funnelData.totalContacts * 100).toFixed(1)}%`
+              : "—",
+            sub: "Enquiry → Handover",
+            icon: TrendingUp,
+            variant: "metric-tile-green",
+          },
+        ].map((kpi) => (
+          <div key={kpi.label} className={`metric-tile ${kpi.variant}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest opacity-70">{kpi.label}</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight">{kpi.value}</p>
+                <p className="mt-1 text-xs opacity-65">{kpi.sub}</p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm shadow-inner">
+                <kpi.icon className="h-5 w-5" />
+              </div>
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <Users className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-start justify-between p-5">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Pipeline Value</p>
-              <p className="mt-1.5 text-2xl font-semibold">
-                {funnelData ? formatCurrency(funnelData.totalPipelineValue) : "—"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Sum of all budgets</p>
-            </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <IndianRupee className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-start justify-between p-5">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Conversion (→ Handover)</p>
-              <p className="mt-1.5 text-2xl font-semibold">
-                {funnelData && funnelData.totalContacts > 0
-                  ? `${((stages.find((s) => s.stage === "HANDOVER")?.count ?? 0) / funnelData.totalContacts * 100).toFixed(1)}%`
-                  : "—"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Enquiry → Handover rate</p>
-            </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        ))}
       </div>
 
       {/* ── Conversion Funnel ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Conversion Funnel — Stage-wise Contact Count</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!funnelData ? (
-            <Skeleton className="h-64 w-full" />
-          ) : activeStages.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">No contacts yet. Add contacts to see the funnel.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {stages.map(({ stage, count }) => {
-                const pct = Math.round((count / maxCount) * 100);
-                const color = FUNNEL_COLORS[stage] ?? "#9ca3af";
-                const label = STAGE_LABELS[stage as ContactStage] ?? stage;
-                return (
-                  <div key={stage} className="flex items-center gap-3">
-                    <span className="w-36 shrink-0 text-right text-xs font-medium text-muted-foreground">{label}</span>
-                    <div className="relative h-6 flex-1 overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, backgroundColor: color, opacity: count === 0 ? 0.18 : 1 }}
-                      />
-                    </div>
-                    <span className="w-8 shrink-0 text-left text-sm font-semibold" style={{ color: count > 0 ? color : undefined }}>
-                      {count}
-                    </span>
+      <div className="glass-card p-5">
+        <h3 className="mb-4 text-sm font-semibold text-foreground">Conversion Funnel — Stage-wise Contact Count</h3>
+        {!funnelData ? (
+          <Skeleton className="h-64 w-full" />
+        ) : activeStages.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">No contacts yet. Add contacts to see the funnel.</p>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {stages.map(({ stage, count }) => {
+              const pct = Math.round((count / maxCount) * 100);
+              const color = FUNNEL_COLORS[stage] ?? "#9ca3af";
+              const label = STAGE_LABELS[stage as ContactStage] ?? stage;
+              return (
+                <div key={stage} className="flex items-center gap-3">
+                  <span className="w-36 shrink-0 text-right text-xs font-medium text-muted-foreground">{label}</span>
+                  <div className="relative h-5 flex-1 overflow-hidden rounded-full bg-secondary/70">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${pct}%`,
+                        background: count > 0
+                          ? `linear-gradient(90deg, ${color}cc, ${color})`
+                          : color,
+                        opacity: count === 0 ? 0.15 : 1,
+                        boxShadow: count > 0 ? `0 0 8px ${color}55` : undefined,
+                      }}
+                    />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <span className="w-8 shrink-0 text-left text-sm font-bold" style={{ color: count > 0 ? color : undefined }}>
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Delivery Overview + Campaigns by Status ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 card-enhanced">
           <CardHeader>
             <CardTitle>Delivery Overview (last 14 days)</CardTitle>
           </CardHeader>
