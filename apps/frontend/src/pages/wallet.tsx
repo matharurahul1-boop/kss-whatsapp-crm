@@ -117,10 +117,11 @@ export default function WalletPage() {
     onError: () => toast({ title: "Failed to update role", variant: "destructive" }),
   });
 
-  const wallet = data?.wallet;
+  const raw = data?.wallet;
+  const wallet = raw ? { ...raw, balance: Number(raw.balance), lowBalanceThreshold: Number(raw.lowBalanceThreshold) } : undefined;
   const rates = data?.rates ?? [];
   const validRates = draftRates.length === 3 && draftRates.every((rate) => { const value = Number(rate.value); return rate.value.trim() !== "" && Number.isFinite(value) && value >= 0 && value <= 100000 && Math.abs(value * 10000 - Math.round(value * 10000)) < 0.000001; });
-  const recentTx = data?.transactions ?? [];
+  const recentTx = (data?.transactions ?? []).map(tx => ({ ...tx, amount: Number(tx.amount), balanceAfter: Number(tx.balanceAfter) }));
   const isLow = wallet && wallet.balance < wallet.lowBalanceThreshold;
 
   return (
@@ -211,7 +212,7 @@ export default function WalletPage() {
           {(txData?.items ?? recentTx).length === 0 && (
             <p className="px-5 py-8 text-center text-sm text-muted-foreground">No transactions yet.</p>
           )}
-          {(txData?.items ?? recentTx).map((tx) => (
+          {(txData ? txData.items.map(tx => ({ ...tx, amount: Number(tx.amount), balanceAfter: Number(tx.balanceAfter) })) : recentTx).map((tx) => (
             <div key={tx.id} className="flex items-center gap-3 border-t border-border px-5 py-3 first:border-t-0">
               <div
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tx.type !== "DEBIT" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
