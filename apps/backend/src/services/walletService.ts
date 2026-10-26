@@ -32,13 +32,20 @@ export async function getRateForTemplate(category: string, hasMedia: boolean): P
 }
 
 export async function deductWalletCost(opts: {
-  category: string;
-  hasMedia: boolean;
+  category?: string;
+  hasMedia?: boolean;
+  templateName?: string;
   notificationId: string;
   description: string;
 }): Promise<void> {
   try {
-    const cost = await getRateForTemplate(opts.category, opts.hasMedia);
+    let category = opts.category ?? "MARKETING";
+    let hasMedia = opts.hasMedia ?? false;
+    if (opts.templateName && !opts.category) {
+      const tmpl = await prisma.whatsAppTemplate.findFirst({ where: { name: opts.templateName } });
+      if (tmpl) { category = tmpl.category; hasMedia = tmpl.headerType !== "NONE" && tmpl.headerType !== "TEXT"; }
+    }
+    const cost = await getRateForTemplate(category, hasMedia);
     const wallet = await getOrCreateWallet();
     if (wallet.balance < cost) return;
 

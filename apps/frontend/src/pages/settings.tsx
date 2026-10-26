@@ -172,7 +172,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Meta App Secret</Label>
-            <Input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} placeholder={config?.appSecretMasked || "Not set"} />
+            <Input type="password" autoComplete="new-password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} placeholder={config?.appSecretMasked || "Not set"} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>WABA ID</Label>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Access Token</Label>
-            <Input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder={config?.accessTokenMasked || "Not set"} />
+            <Input type="password" autoComplete="new-password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder={config?.accessTokenMasked || "Not set"} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Webhook Verify Token</Label>
