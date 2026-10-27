@@ -27,6 +27,7 @@ import walletRoutes from "./routes/wallet.routes";
 
 // Load Meta config from DB once per process (warm Vercel instances reuse it)
 let configLoaded = false;
+export function resetMetaConfigCache() { configLoaded = false; }
 async function ensureMetaConfig() {
   if (configLoaded) return;
   try {

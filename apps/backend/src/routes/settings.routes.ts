@@ -10,6 +10,7 @@ import { maskSecret } from "../utils/mask";
 import { recordAudit } from "../lib/audit";
 import { env } from "../config/env";
 import { resetWhatsAppService } from "../services/whatsapp";
+import { resetMetaConfigCache } from "../app";
 
 const router = Router();
 router.use(requireAuth, requireManager);
@@ -84,8 +85,9 @@ router.put(
     if (body.phoneNumberId){ process.env.WHATSAPP_PHONE_NUMBER_ID = body.phoneNumberId; env.phoneNumberId = body.phoneNumberId; }
     if (body.appId)        { process.env.META_APP_ID = body.appId;                  env.metaAppId = body.appId; }
 
-    // Reset cached WhatsApp service so next call picks up new credentials
+    // Reset cached WhatsApp service and config cache so next request reloads from DB
     resetWhatsAppService();
+    resetMetaConfigCache();
 
     await recordAudit({ userId: req.user?.userId, action: "META_CONFIG_UPDATED", description: "Meta WhatsApp configuration updated" });
 
