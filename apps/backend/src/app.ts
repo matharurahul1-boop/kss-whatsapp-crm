@@ -30,13 +30,27 @@ let configLoaded = false;
 async function ensureMetaConfig() {
   if (configLoaded) return;
   try {
-    const config = await prisma.metaConfig.findFirst();
+    // Select only columns that always exist (avoids crash if migration not run yet)
+    const config = await prisma.metaConfig.findFirst({
+      select: { appId: true, wabaId: true, phoneNumberId: true },
+    });
     if (!config) return;
-    if (config.appId)              { process.env.META_APP_ID = config.appId;                       env.metaAppId = config.appId; }
-    if (config.wabaId)             { process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = config.wabaId;     env.wabaId = config.wabaId; }
-    if (config.phoneNumberId)      { process.env.WHATSAPP_PHONE_NUMBER_ID = config.phoneNumberId;  env.phoneNumberId = config.phoneNumberId; }
-    if ((config as any).accessTokenPlain) { process.env.WHATSAPP_ACCESS_TOKEN = (config as any).accessTokenPlain; env.accessToken = (config as any).accessTokenPlain; }
-    if ((config as any).appSecretPlain)   { process.env.META_APP_SECRET = (config as any).appSecretPlain;        env.metaAppSecret = (config as any).appSecretPlain; }
+    if (config.appId)         { process.env.META_APP_ID = config.appId;                       env.metaAppId = config.appId; }
+    if (config.wabaId)        { process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = config.wabaId;     env.wabaId = config.wabaId; }
+    if (config.phoneNumberId) { process.env.WHATSAPP_PHONE_NUMBER_ID = config.phoneNumberId;  env.phoneNumberId = config.phoneNumberId; }
+
+    // Try to load plain-text tokens (only available after SQL migration is run)
+    try {
+      const sensitive = await prisma.$queryRaw<{ accessTokenPlain: string | null; appSecretPlain: string | null }[]>`
+        SELECT "accessTokenPlain", "appSecretPlain" FROM "MetaConfig" LIMIT 1
+      `;
+      const s = sensitive[0];
+      if (s?.accessTokenPlain) { process.env.WHATSAPP_ACCESS_TOKEN = s.accessTokenPlain; env.accessToken = s.accessTokenPlain; }
+      if (s?.appSecretPlain)   { process.env.META_APP_SECRET = s.appSecretPlain;          env.metaAppSecret = s.appSecretPlain; }
+    } catch {
+      // Columns don't exist yet — tokens stay as Vercel env vars until migration runs
+    }
+
     resetWhatsAppService();
     configLoaded = true;
   } catch (e) {
