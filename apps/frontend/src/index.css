@@ -273,10 +273,10 @@
 @layer components {
   .app-shell {
     background-image:
-      radial-gradient(ellipse 700px 500px at 0% 0%,   hsl(38 90% 60% / 0.18), transparent 70%),
-      radial-gradient(ellipse 600px 450px at 100% 5%,  hsl(20 70% 55% / 0.13), transparent 70%),
-      radial-gradient(ellipse 750px 550px at 90% 110%, hsl(28 82% 22% / 0.16), transparent 70%),
-      radial-gradient(ellipse 550px 400px at 0%  95%,  hsl(38 80% 65% / 0.20), transparent 70%);
+      radial-gradient(ellipse 700px 500px at 0% 0%,   hsl(38 90% 60% / 0.26), transparent 70%),
+      radial-gradient(ellipse 600px 450px at 100% 5%,  hsl(20 70% 55% / 0.20), transparent 70%),
+      radial-gradient(ellipse 750px 550px at 90% 110%, hsl(28 82% 22% / 0.22), transparent 70%),
+      radial-gradient(ellipse 550px 400px at 0%  95%,  hsl(38 80% 65% / 0.28), transparent 70%);
   }
 }
 
