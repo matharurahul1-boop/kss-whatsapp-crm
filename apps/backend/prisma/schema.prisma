@@ -157,10 +157,12 @@ model MetaConfig {
   appId                  String?
   appSecretMasked        String?
   appSecretHash          String?
+  appSecretPlain         String?
   wabaId                 String?
   phoneNumberId          String?
   accessTokenMasked      String?
   accessTokenHash        String?
+  accessTokenPlain       String?
   webhookVerifyToken     String?
   mode                   String   @default("mock")
   updatedAt              DateTime @updatedAt

@@ -58,10 +58,18 @@ router.put(
       webhookVerifyToken: body.webhookVerifyToken ?? existing?.webhookVerifyToken,
       mode: env.metaMode,
       ...(body.appSecret
-        ? { appSecretMasked: maskSecret(body.appSecret), appSecretHash: crypto.createHash("sha256").update(body.appSecret).digest("hex") }
+        ? {
+            appSecretMasked: maskSecret(body.appSecret),
+            appSecretHash: crypto.createHash("sha256").update(body.appSecret).digest("hex"),
+            appSecretPlain: body.appSecret,
+          }
         : {}),
       ...(body.accessToken
-        ? { accessTokenMasked: maskSecret(body.accessToken), accessTokenHash: crypto.createHash("sha256").update(body.accessToken).digest("hex") }
+        ? {
+            accessTokenMasked: maskSecret(body.accessToken),
+            accessTokenHash: crypto.createHash("sha256").update(body.accessToken).digest("hex"),
+            accessTokenPlain: body.accessToken,
+          }
         : {}),
     };
 
