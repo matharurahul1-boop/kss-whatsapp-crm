@@ -6,6 +6,8 @@ import morgan from "morgan";
 import path from "path";
 import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { prisma } from "./lib/prisma";
+import { resetWhatsAppService } from "./services/whatsapp";
 
 import authRoutes from "./routes/auth.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
@@ -23,8 +25,30 @@ import v1Routes from "./routes/v1";
 import triggersRoutes from "./routes/triggers.routes";
 import walletRoutes from "./routes/wallet.routes";
 
+// Load Meta config from DB once per process (warm Vercel instances reuse it)
+let configLoaded = false;
+async function ensureMetaConfig() {
+  if (configLoaded) return;
+  try {
+    const config = await prisma.metaConfig.findFirst();
+    if (!config) return;
+    if (config.appId)              { process.env.META_APP_ID = config.appId;                       env.metaAppId = config.appId; }
+    if (config.wabaId)             { process.env.WHATSAPP_BUSINESS_ACCOUNT_ID = config.wabaId;     env.wabaId = config.wabaId; }
+    if (config.phoneNumberId)      { process.env.WHATSAPP_PHONE_NUMBER_ID = config.phoneNumberId;  env.phoneNumberId = config.phoneNumberId; }
+    if ((config as any).accessTokenPlain) { process.env.WHATSAPP_ACCESS_TOKEN = (config as any).accessTokenPlain; env.accessToken = (config as any).accessTokenPlain; }
+    if ((config as any).appSecretPlain)   { process.env.META_APP_SECRET = (config as any).appSecretPlain;        env.metaAppSecret = (config as any).appSecretPlain; }
+    resetWhatsAppService();
+    configLoaded = true;
+  } catch (e) {
+    console.warn("[app] Could not load Meta config from DB:", e);
+  }
+}
+
 export function createApp() {
   const app = express();
+
+  // Run DB config load on every cold start (Vercel serverless)
+  app.use((_req, _res, next) => { ensureMetaConfig().then(next).catch(next); });
 
   app.use(cors({ origin: env.clientOrigin, credentials: true }));
   app.use(express.json({ limit: "15mb" }));
