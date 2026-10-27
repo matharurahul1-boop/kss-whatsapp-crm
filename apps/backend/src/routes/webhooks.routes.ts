@@ -83,15 +83,38 @@ router.post(
   })
 );
 
-async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string) {
-  const phone = msg.from;
+// Meta sends numbers as "917082071949"; contacts may be stored as "7082071949" or "+917082071949"
+function normalizePhone(raw: string): string[] {
+  const digits = raw.replace(/\D/g, "");
+  const variants = new Set<string>([raw, digits]);
+  // Indian numbers: 91XXXXXXXXXX → try last 10 digits
+  if (digits.length === 12 && digits.startsWith("91")) {
+    variants.add(digits.slice(2));
+    variants.add(`+${digits}`);
+  } else if (digits.length === 10) {
+    variants.add(`91${digits}`);
+    variants.add(`+91${digits}`);
+  }
+  return Array.from(variants);
+}
 
-  // Find or create conversation
-  let conversation = await prisma.conversation.findUnique({ where: { phone } });
+async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string) {
+  const rawPhone = msg.from;
+  const phoneVariants = normalizePhone(rawPhone);
+
+  // Find or create conversation — try all phone variants
+  let conversation = await prisma.conversation.findFirst({
+    where: { phone: { in: phoneVariants } },
+  });
 
   if (!conversation) {
-    // Try to link to existing contact
-    const contact = await prisma.contact.findUnique({ where: { phone } });
+    // Try to link to existing contact using any variant
+    const contact = await prisma.contact.findFirst({
+      where: { phone: { in: phoneVariants } },
+    });
+
+    // Use the phone format that matched the contact, else Meta's raw format
+    const phone = contact?.phone ?? rawPhone;
 
     // If no contact and we have a name, create one
     let contactId = contact?.id ?? null;
