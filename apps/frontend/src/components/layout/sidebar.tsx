@@ -3,7 +3,7 @@ import { canAccessManagerScreens, MANAGER_SCREEN_PATHS } from "@/lib/permissions
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, MessageCircle, FileText, Users, Send,
-  Wallet, Bell, Code2, ScrollText, Settings, Megaphone,
+  Wallet, Bell, Code2, ScrollText, Settings, Megaphone, // MessageCircle kept for nav items
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -75,16 +75,15 @@ export { NAV_ITEMS };
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-3xl border border-border/60 bg-card/95 shadow-float backdrop-blur-xl lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-3xl border border-border/60 bg-card/90 shadow-float backdrop-blur-xl lg:flex" style={{ boxShadow: "0 10px 34px -8px rgb(34 21 8 / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.65)" }}>
       {/* Brand header */}
       <div className="mx-3 flex h-20 shrink-0 items-center gap-3 border-b border-border/50 px-2">
-        {/* KSS espresso logomark */}
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <MessageCircle className="h-4 w-4" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-primary text-primary-foreground shadow-sm" style={{ boxShadow: "0 4px 12px -2px hsl(28 82% 11% / 0.45)" }}>
+          <span className="text-base font-extrabold tracking-tight">K</span>
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-bold tracking-tight text-foreground">KSS WhatsApp</p>
-          <p className="text-[10px] font-medium text-muted-foreground">KSS Interiors · CRM</p>
+          <p className="text-sm font-extrabold tracking-tight text-foreground">KSS Interiors</p>
+          <p className="text-[10px] font-semibold text-muted-foreground">WhatsApp CRM</p>
         </div>
       </div>
 

@@ -26,7 +26,7 @@ export function Topbar() {
   });
 
   return (
-    <header className="app-topbar sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 rounded-2xl border border-border/60 bg-card/95 px-2 shadow-pop backdrop-blur-xl sm:px-5 lg:rounded-3xl">
+    <header className="app-topbar sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 rounded-[20px] border border-border/60 bg-card/90 px-3 shadow-pop backdrop-blur-xl sm:px-4 lg:rounded-3xl" style={{ boxShadow: "0 8px 28px -6px rgb(34 21 8 / 0.14), inset 0 1px 0 hsl(0 0% 100% / 0.65)" }}>
       <Button variant="ghost" size="icon" className="topbar-menu shrink-0 lg:hidden" aria-label="Open navigation menu" onClick={() => setMobileOpen(true)}>
         <Menu className="h-5 w-5" />
       </Button>

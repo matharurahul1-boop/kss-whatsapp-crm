@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { formatDate, formatPhone } from "@/lib/utils";
 import { Campaign, Notification, WhatsAppAccount, STAGE_LABELS, ContactStage } from "@/lib/types";
@@ -64,7 +65,15 @@ const FUNNEL_COLORS: Record<string, string> = {
   LOST: "#9ca3af",
 };
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good Morning";
+  if (h < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { data: summary, isLoading } = useQuery({
     queryKey: ["dashboard-summary"],
     queryFn: () => api.get<DashboardSummary>("/dashboard/summary"),
@@ -117,26 +126,39 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Dashboard"
-        description="Overview of your WhatsApp notification activity for KSS Interiors."
-        actions={
-          <>
-            <Button variant="outline" asChild className="shadow-sm hover:shadow transition-shadow">
-              <Link to="/campaigns/new">
-                <Plus className="h-4 w-4" /> Create Campaign
-              </Link>
-            </Button>
-            <Button asChild className="btn-3d">
-              <Link to="/send">
-                <Send className="h-4 w-4" /> Send Notification
-              </Link>
-            </Button>
-          </>
-        }
-      />
+      {/* ── Hero card ── */}
+      <div
+        className="relative overflow-hidden rounded-[20px] p-5 text-white"
+        style={{
+          background: "linear-gradient(120deg, hsl(28 82% 22%), hsl(38 80% 42%))",
+          boxShadow: "0 8px 28px -6px hsl(28 82% 11% / 0.45)",
+        }}
+      >
+        <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/8" />
+        <div className="pointer-events-none absolute bottom-[-20px] right-12 h-24 w-24 rounded-full bg-white/5" />
+        <p className="text-[11px] font-bold uppercase tracking-widest opacity-75">{getGreeting()}</p>
+        <p className="mt-1 text-2xl font-extrabold tracking-tight">{user?.name ?? "KSS Team"} 👋</p>
+        <p className="mt-1 text-sm font-medium opacity-70">KSS Interiors · WhatsApp CRM</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to="/contacts">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/18 px-3 py-1 text-xs font-bold backdrop-blur-sm transition-colors hover:bg-white/25">
+              <Users className="h-3 w-3" /> Contacts
+            </span>
+          </Link>
+          <Link to="/campaigns/new">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/18 px-3 py-1 text-xs font-bold backdrop-blur-sm transition-colors hover:bg-white/25">
+              <Plus className="h-3 w-3" /> Campaign
+            </span>
+          </Link>
+          <Link to="/send">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/18 px-3 py-1 text-xs font-bold backdrop-blur-sm transition-colors hover:bg-white/25">
+              <Send className="h-3 w-3" /> Send Message
+            </span>
+          </Link>
+        </div>
+      </div>
 
-      {/* ── Top stat cards — colored metric tiles ── */}
+      {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)
