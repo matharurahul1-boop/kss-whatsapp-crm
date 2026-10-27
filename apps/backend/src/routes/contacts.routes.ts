@@ -16,6 +16,42 @@ const router = Router();
 router.use(requireAuth);
 router.use("/stage-templates", requireManager);
 
+// Maps contact stage → trigger event (for auto-fire on stage change)
+const STAGE_TO_TRIGGER: Record<string, string> = {
+  ENQUIRY:         "ENQUIRY_CREATED",
+  PI_CREATED:      "PI_CREATED",
+  SALES_ORDER:     "SALES_ORDER_INITIATED",
+  PRODUCTION:      "ORDER_STATUS_PRODUCTION",
+  READY_DISPATCH:  "ORDER_STATUS_READY_DISPATCH",
+  DISPATCHED:      "ORDER_STATUS_DISPATCHED",
+  INSTALLATION:    "ORDER_STATUS_INSTALLATION",
+  HANDOVER:        "ORDER_STATUS_HANDOVER",
+  SERVICE_REQUEST: "SERVICE_REQUEST_REMINDER",
+  TICKET_OPEN:     "TICKET_OPEN",
+  TICKET_CLOSED:   "TICKET_CLOSED",
+  ON_HOLD:         "ENQUIRY_CANCELLED_ADMIN",
+  LOST:            "ENQUIRY_CANCELLED_ADMIN",
+};
+
+async function fireTriggerForStage(stage: string, phone: string, contactName: string) {
+  const event = STAGE_TO_TRIGGER[stage];
+  if (!event) return;
+  try {
+    const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event } });
+    if (!cfg?.enabled || !cfg.templateName) return;
+    const wa = getWhatsAppService();
+    const result = await wa.sendMessage({
+      phone,
+      templateName: cfg.templateName,
+      language: cfg.language ?? "en",
+      variables: { "1": contactName },
+    });
+    await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+  } catch (err) {
+    console.error(`[contacts] Trigger "${event}" failed for ${phone}:`, err);
+  }
+}
+
 const STAGE_LABELS: Record<string, string> = {
   ENQUIRY:         "Enquiry",
   PROSPECT:        "Prospect",
@@ -148,7 +184,8 @@ router.post(
 
     await recordAudit({ userId: req.user?.userId, action: "CONTACT_CREATED", description: `Contact "${contact.name}" created` });
 
-    // Send onboarding template if configured
+    // Fire ENQUIRY_CREATED trigger + send onboarding stage template
+    void fireTriggerForStage("ENQUIRY", phone, contact.name);
     const onboarding = await (prisma as any).stageTemplate.findUnique({ where: { stage: "ENQUIRY" } });
     if (onboarding?.enabled && onboarding.templateName) {
       void sendTemplateToContact(phone, contact.name, onboarding.templateName, onboarding.language);
@@ -189,8 +226,9 @@ router.put(
       include: { tags: true },
     });
 
-    // Stage changed → send stage template
+    // Stage changed → fire trigger + send stage template
     if (input.stage && input.stage !== existing.stage) {
+      void fireTriggerForStage(input.stage, phone, updated.name);
       const stageTpl = await (prisma as any).stageTemplate.findUnique({ where: { stage: input.stage } });
       if (stageTpl?.enabled && stageTpl.templateName) {
         void sendTemplateToContact(phone, updated.name, stageTpl.templateName, stageTpl.language);
