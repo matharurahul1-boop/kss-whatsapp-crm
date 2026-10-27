@@ -7,7 +7,7 @@
     "apps/frontend"
   ],
   "scripts": {
-    "postinstall": "node_modules/.bin/prisma generate --schema=apps/backend/prisma/schema.prisma",
+    "postinstall": "node scripts/prisma-generate.js",
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
     "build": "npm run build -w apps/backend && npm run build -w apps/frontend",
     "typecheck": "npm run typecheck -w apps/backend && npm run typecheck -w apps/frontend",

@@ -10,7 +10,7 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
-        "buildCommand": "../../node_modules/.bin/prisma generate --schema=../backend/prisma/schema.prisma && npm run build"
+        "buildCommand": "node ../../scripts/prisma-generate.js && npm run build"
       }
     }
   ],
