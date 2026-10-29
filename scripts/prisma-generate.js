@@ -20,7 +20,7 @@ try {
 
 if (!prismaPath) {
   // Last resort: use npx
-  execFileSync('npx', ['prisma', 'generate', '--schema=apps/backend/prisma/schema.prisma'], {
+  execFileSync('npx', ['prisma@5', 'generate', '--schema=apps/backend/prisma/schema.prisma'], {
     stdio: 'inherit',
     shell: true,
   });
