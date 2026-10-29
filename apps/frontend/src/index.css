@@ -280,6 +280,36 @@
   }
 }
 
+/* ── Refer button sparkles ─────────────────────────────────────────────────── */
+@keyframes sparkle-pop {
+  0%   { transform: translate(var(--sparkle-x), var(--sparkle-y)) scale(0) rotate(0deg);   opacity: 0; }
+  40%  { transform: translate(var(--sparkle-x), var(--sparkle-y)) scale(1.2) rotate(15deg); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--sparkle-x), var(--sparkle-y)) scale(0) rotate(-10deg); opacity: 0; }
+}
+.refer-sparkle {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: var(--sparkle-size);
+  height: var(--sparkle-size);
+  margin-left: calc(var(--sparkle-size) / -2);
+  margin-top: calc(var(--sparkle-size) / -2);
+  border-radius: 50%;
+  background: hsl(38 90% 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+.refer-button:hover .refer-sparkle {
+  animation: sparkle-pop 0.65s ease-out both;
+  animation-delay: var(--sparkle-delay);
+}
+.refer-gift {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.refer-button:hover .refer-gift {
+  transform: rotate(-8deg) scale(1.15);
+}
+
 /* ── iOS-style slide transitions ───────────────────────────────────────────── */
 @keyframes slide-in-right {
   from { transform: translateX(100%); opacity: 0; }
