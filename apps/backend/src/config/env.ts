@@ -30,5 +30,5 @@ export const env = {
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? "",
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY ?? "",
-  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "whatsapp-media",
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "media",
 };
