@@ -35,7 +35,7 @@ router.get(
         take,
         include: {
           contact: true,
-          messages: { orderBy: { createdAt: "desc" }, take: 1 },
+          messages: { orderBy: { createdAt: "desc" }, take: 2 },
         },
       }),
       prisma.conversation.count({ where }),

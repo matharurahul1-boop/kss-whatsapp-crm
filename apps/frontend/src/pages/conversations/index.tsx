@@ -132,12 +132,17 @@ function QuotedMessage({ replyTo, isOut }: { replyTo: MessageReplyPreview; isOut
 // ─── message bubble ──────────────────────────────────────────────────────────
 
 function MessageBubble({
-  msg, senderName, onReply,
+  msg, senderName, onReply, prevMsg,
 }: {
   msg: Message;
   senderName: string;
   onReply: (msg: Message) => void;
+  prevMsg?: Message;
 }) {
+  const isLikelyAutoReply =
+    msg.direction === "INBOUND" &&
+    prevMsg?.direction === "OUTBOUND" &&
+    (new Date(msg.sentAt ?? msg.createdAt).getTime() - new Date(prevMsg.sentAt ?? prevMsg.createdAt).getTime()) <= AUTO_REPLY_THRESHOLD_MS;
   const isOut = msg.direction === "OUTBOUND";
   const isAuto = isAutoMessage(msg);
   const time = formatTime(msg.sentAt ?? msg.createdAt);
@@ -173,7 +178,14 @@ function MessageBubble({
       <div className={cn("relative max-w-[72%] flex flex-col", isOut ? "items-end" : "items-start")}>
         {/* Sender label */}
         {!isOut && (
-          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 ml-2 mb-0.5">{senderName}</span>
+          <div className="flex items-center gap-1.5 ml-2 mb-0.5">
+            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">{senderName}</span>
+            {isLikelyAutoReply && (
+              <span className="flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300">
+                <Bot className="h-2.5 w-2.5" />Auto Reply
+              </span>
+            )}
+          </div>
         )}
         {/* Auto/Manual pill */}
         {isOut && (
@@ -299,9 +311,25 @@ const FILTER_LABELS: Record<ConvFilter, string> = {
   AUTO_ONLY: "Auto Reply", MANUAL_ONLY: "Manual",
 };
 
-function lastOutbound(c: Conversation) { return c.messages?.find(m => m.direction === "OUTBOUND") ?? null; }
-function isAutoReply(c: Conversation) { const m = lastOutbound(c); return m?.type === "TEMPLATE"; }
-function isManualReply(c: Conversation) { const m = lastOutbound(c); return m != null && m.type !== "TEMPLATE"; }
+// If an inbound message arrived within 30s of the previous outbound → likely customer auto-reply
+const AUTO_REPLY_THRESHOLD_MS = 30_000;
+
+function detectCustomerAutoReply(conv: Conversation): boolean {
+  const msgs = conv.messages ?? [];
+  const inbound = msgs.find(m => m.direction === "INBOUND");
+  const outbound = msgs.find(m => m.direction === "OUTBOUND");
+  if (!inbound || !outbound) return false;
+  const inboundTime = new Date(inbound.sentAt ?? inbound.createdAt).getTime();
+  const outboundTime = new Date(outbound.sentAt ?? outbound.createdAt).getTime();
+  return inboundTime > outboundTime && (inboundTime - outboundTime) <= AUTO_REPLY_THRESHOLD_MS;
+}
+
+function isAutoReply(c: Conversation) { return detectCustomerAutoReply(c); }
+function isManualReply(c: Conversation) {
+  const inbound = (c.messages ?? []).find(m => m.direction === "INBOUND");
+  if (!inbound) return false;
+  return !detectCustomerAutoReply(c);
+}
 
 function filterConversations(convs: Conversation[], f: ConvFilter) {
   if (f === "ALL") return convs;
@@ -654,12 +682,13 @@ export default function ConversationsPage() {
               {!loadingChat && messages.length === 0 && (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No messages yet</div>
               )}
-              {grouped.map(({ msgs }) => (
+              {grouped.map(({ msgs }, gi) => (
                 <div key={msgs[0].id}>
                   <DateSeparator dateStr={msgs[0].sentAt ?? msgs[0].createdAt} />
-                  {msgs.map((msg) => (
-                    <MessageBubble key={msg.id} msg={msg} senderName={senderName} onReply={handleReply} />
-                  ))}
+                  {msgs.map((msg, i) => {
+                    const prevMsg = i > 0 ? msgs[i - 1] : grouped[gi - 1]?.msgs.at(-1);
+                    return <MessageBubble key={msg.id} msg={msg} senderName={senderName} onReply={handleReply} prevMsg={prevMsg} />;
+                  })}
                 </div>
               ))}
               <div ref={messagesEndRef} className="h-2" />
