@@ -4,6 +4,7 @@ import { env } from "../config/env";
 import { applyDeliveryEvent, DeliveryEventType } from "../services/notificationEvents";
 import { prisma } from "../lib/prisma";
 import { updateOutboundMessageStatus } from "../services/conversationService";
+import { createClient } from "@supabase/supabase-js";
 
 const router = Router();
 
@@ -100,11 +101,36 @@ function normalizePhone(raw: string): string[] {
 
 async function fetchMetaMediaUrl(mediaId: string): Promise<string | null> {
   try {
+    // Step 1: Get the temporary Meta URL
     const res = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${env.accessToken}` },
     });
-    const data = (await res.json()) as { url?: string };
-    return data.url ?? null;
+    const data = (await res.json()) as { url?: string; mime_type?: string };
+    if (!data.url) return null;
+
+    // Step 2: Download the media bytes using the access token
+    const mediaRes = await fetch(data.url, {
+      headers: { Authorization: `Bearer ${env.accessToken}` },
+    });
+    if (!mediaRes.ok) return null;
+    const buffer = Buffer.from(await mediaRes.arrayBuffer());
+    const mimeType = data.mime_type ?? "application/octet-stream";
+
+    // Step 3: Upload to Supabase Storage for a permanent public URL
+    if (env.supabaseUrl && env.supabaseServiceKey) {
+      const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
+      const ext = mimeType.split("/")[1]?.split(";")[0] ?? "bin";
+      const path = `inbound/${mediaId}.${ext}`;
+      const { error } = await supabase.storage
+        .from(env.supabaseStorageBucket)
+        .upload(path, buffer, { contentType: mimeType, upsert: true });
+      if (!error) {
+        const { data: pub } = supabase.storage.from(env.supabaseStorageBucket).getPublicUrl(path);
+        return pub.publicUrl;
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
