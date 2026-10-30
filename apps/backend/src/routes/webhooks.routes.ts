@@ -98,6 +98,18 @@ function normalizePhone(raw: string): string[] {
   return Array.from(variants);
 }
 
+async function fetchMetaMediaUrl(mediaId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${env.accessToken}` },
+    });
+    const data = (await res.json()) as { url?: string };
+    return data.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string) {
   const rawPhone = msg.from;
   const phoneVariants = normalizePhone(rawPhone);
@@ -136,6 +148,7 @@ async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string
   // Determine message type and body
   let type: "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "VIDEO" | "STICKER" | "UNKNOWN" = "UNKNOWN";
   let body: string | null = null;
+  let mediaUrl: string | null = null;
 
   switch (msg.type) {
     case "text":
@@ -145,20 +158,25 @@ async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string
     case "image":
       type = "IMAGE";
       body = msg.image?.caption ?? null;
+      if (msg.image?.id) mediaUrl = await fetchMetaMediaUrl(msg.image.id);
       break;
     case "document":
       type = "DOCUMENT";
       body = msg.document?.filename ?? msg.document?.caption ?? null;
+      if (msg.document?.id) mediaUrl = await fetchMetaMediaUrl(msg.document.id);
       break;
     case "audio":
       type = "AUDIO";
+      if (msg.audio?.id) mediaUrl = await fetchMetaMediaUrl(msg.audio.id);
       break;
     case "video":
       type = "VIDEO";
       body = msg.video?.caption ?? null;
+      if (msg.video?.id) mediaUrl = await fetchMetaMediaUrl(msg.video.id);
       break;
     case "sticker":
       type = "STICKER";
+      if (msg.sticker?.id) mediaUrl = await fetchMetaMediaUrl(msg.sticker.id);
       break;
   }
 
@@ -169,6 +187,7 @@ async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string
       direction: "INBOUND",
       type,
       body,
+      mediaUrl,
       waMessageId: msg.id,
       status: "DELIVERED",
       sentAt: new Date(Number(msg.timestamp) * 1000),
