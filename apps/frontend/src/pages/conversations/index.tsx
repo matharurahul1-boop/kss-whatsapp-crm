@@ -292,11 +292,16 @@ function getMediaType(file: File): MediaType | null {
 
 interface AttachmentPreview { file: File; mediaType: MediaType; objectUrl: string }
 interface ChatData { conversation: Conversation; messages: Message[]; windowActive: boolean; windowExpiresAt: string | null }
-type ConvFilter = "ALL" | "UNREAD" | "ACTIVE" | "READ" | "SENT_ONLY";
+type ConvFilter = "ALL" | "UNREAD" | "ACTIVE" | "READ" | "SENT_ONLY" | "AUTO_ONLY" | "MANUAL_ONLY";
 
 const FILTER_LABELS: Record<ConvFilter, string> = {
   ALL: "All", UNREAD: "Unread", ACTIVE: "Active", READ: "Seen", SENT_ONLY: "Not Seen",
+  AUTO_ONLY: "Auto Reply", MANUAL_ONLY: "Manual",
 };
+
+function lastOutbound(c: Conversation) { return c.messages?.find(m => m.direction === "OUTBOUND") ?? null; }
+function isAutoReply(c: Conversation) { const m = lastOutbound(c); return m?.type === "TEMPLATE"; }
+function isManualReply(c: Conversation) { const m = lastOutbound(c); return m != null && m.type !== "TEMPLATE"; }
 
 function filterConversations(convs: Conversation[], f: ConvFilter) {
   if (f === "ALL") return convs;
@@ -304,6 +309,8 @@ function filterConversations(convs: Conversation[], f: ConvFilter) {
   if (f === "ACTIVE") return convs.filter((c) => isWindowActive(c.windowExpiresAt ?? null));
   if (f === "READ") return convs.filter((c) => c.messages?.[0]?.direction === "OUTBOUND" && c.messages[0].status === "READ");
   if (f === "SENT_ONLY") return convs.filter((c) => { const l = c.messages?.[0]; return l?.direction === "OUTBOUND" && (l.status === "SENT" || l.status === "DELIVERED"); });
+  if (f === "AUTO_ONLY") return convs.filter(isAutoReply);
+  if (f === "MANUAL_ONLY") return convs.filter(isManualReply);
   return convs;
 }
 
@@ -442,6 +449,8 @@ export default function ConversationsPage() {
     ACTIVE: allConversations.filter((c) => isWindowActive(c.windowExpiresAt ?? null)).length,
     READ: allConversations.filter((c) => c.messages?.[0]?.direction === "OUTBOUND" && c.messages[0].status === "READ").length,
     SENT_ONLY: allConversations.filter((c) => { const l = c.messages?.[0]; return l?.direction === "OUTBOUND" && (l.status === "SENT" || l.status === "DELIVERED"); }).length,
+    AUTO_ONLY: allConversations.filter(isAutoReply).length,
+    MANUAL_ONLY: allConversations.filter(isManualReply).length,
   };
 
   const handleRefresh = () => {
@@ -574,11 +583,23 @@ export default function ConversationsPage() {
                       )}
                       <span className="truncate">{lastMsg?.body ?? (lastMsg?.type ? `📎 ${lastMsg.type.toLowerCase()}` : "No messages")}</span>
                     </span>
-                    {conv.unreadCount > 0 && (
-                      <span className="h-5 min-w-5 px-1 rounded-full bg-emerald-500 text-[10px] font-bold text-white flex items-center justify-center shrink-0">
-                        {conv.unreadCount}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isAutoReply(conv) && (
+                        <span className="flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300">
+                          <Bot className="h-2.5 w-2.5" />Auto
+                        </span>
+                      )}
+                      {isManualReply(conv) && (
+                        <span className="flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300">
+                          <User2 className="h-2.5 w-2.5" />Manual
+                        </span>
+                      )}
+                      {conv.unreadCount > 0 && (
+                        <span className="h-5 min-w-5 px-1 rounded-full bg-emerald-500 text-[10px] font-bold text-white flex items-center justify-center">
+                          {conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </button>
