@@ -66,6 +66,23 @@ export async function deductWalletCost(opts: {
   }
 }
 
+export async function refundTemplateCost(transactionId: string): Promise<void> {
+  try {
+    const tx = await (prisma as any).walletTransaction.findUnique({ where: { id: transactionId } });
+    if (!tx || tx.refunded) return;
+    const wallet = await getOrCreateWallet();
+    const refundAmount = Math.abs(tx.amount);
+    const newBalance = parseFloat((wallet.balance + refundAmount).toFixed(4));
+    await (prisma as any).wallet.update({ where: { id: wallet.id }, data: { balance: newBalance } });
+    await (prisma as any).walletTransaction.update({ where: { id: transactionId }, data: { refunded: true } });
+    await (prisma as any).walletTransaction.create({
+      data: { walletId: wallet.id, type: "REFUND", amount: refundAmount, balanceAfter: newBalance, description: `Refund for failed message` },
+    });
+  } catch (err) {
+    console.error("[wallet] refund error:", err);
+  }
+}
+
 export async function topUpWallet(amount: number, createdById: string, note?: string) {
   const wallet = await getOrCreateWallet();
   const newBalance = parseFloat((wallet.balance + amount).toFixed(4));
