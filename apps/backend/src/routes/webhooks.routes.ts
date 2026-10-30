@@ -128,6 +128,9 @@ async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string
     conversation = await prisma.conversation.create({
       data: { phone, contactId },
     });
+
+    // Auto-reply for first-time contacts (free-form text, within 24h window)
+    void sendAutoReply(rawPhone, senderName);
   }
 
   // Determine message type and body
@@ -181,6 +184,34 @@ async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string
       unreadCount: { increment: 1 },
     },
   });
+}
+
+async function sendAutoReply(to: string, senderName?: string) {
+  try {
+    const greetName = senderName ? ` ${senderName.split(" ")[0]}` : "";
+    const body =
+      `Thank you for reaching out to KSS Interiors${greetName}! 🙏\n\n` +
+      `We specialize in premium modular kitchens and wardrobes crafted for your space.\n\n` +
+      `Our team will get back to you shortly.\n` +
+      `For urgent assistance, please call: 📞 +91 88003 49401\n\n` +
+      `⏰ Business hours: Mon–Sat, 10am–7pm`;
+
+    await fetch(`https://graph.facebook.com/v20.0/${env.phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body },
+      }),
+    });
+  } catch (err) {
+    console.error("[auto-reply] failed:", err);
+  }
 }
 
 export default router;
