@@ -467,12 +467,12 @@ export default function SettingsPage() {
     function StageRow({ stage }: { stage: ContactStage }) {
       const current = stageTpls?.find((s) => s.stage === stage);
       const [tplName, setTplName] = useState(current?.templateName ?? "");
-      const [lang, setLang] = useState(current?.language ?? "en");
+      const [lang, setLang] = useState(current?.language ?? "en_US");
       const [enabled, setEnabled] = useState(current?.enabled ?? true);
 
       useEffect(() => {
         setTplName(current?.templateName ?? "");
-        setLang(current?.language ?? "en");
+        setLang(current?.language ?? "en_US");
         setEnabled(current?.enabled ?? true);
       }, [current?.templateName, current?.language, current?.enabled]);
 

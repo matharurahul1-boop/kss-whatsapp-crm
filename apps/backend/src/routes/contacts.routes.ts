@@ -75,7 +75,7 @@ const STAGE_LABELS: Record<string, string> = {
   LOST:            "Lost",
 };
 
-async function sendTemplateToContact(phone: string, contactName: string, templateName: string, language = "en") {
+async function sendTemplateToContact(phone: string, contactName: string, templateName: string, language = "en_US") {
   try {
     const wa = getWhatsAppService();
     const result = await wa.sendMessage({
@@ -345,7 +345,7 @@ router.put(
     const { stage } = req.params;
     const { templateName, language, enabled } = z.object({
       templateName: z.string(),
-      language: z.string().default("en"),
+      language: z.string().default("en_US"),
       enabled: z.boolean().default(true),
     }).parse(req.body);
 
