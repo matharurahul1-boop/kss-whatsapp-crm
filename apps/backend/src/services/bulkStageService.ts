@@ -31,7 +31,7 @@ async function prepare(input: BulkStageInput) {
   console.log(`[bulkStage] stage=${input.stage} config=`, config ? { templateName: config.templateName, enabled: config.enabled, language: config.language } : "NOT FOUND");
 
   const automation = !!(config?.enabled && config.templateName);
-  const template = automation ? await prisma.whatsAppTemplate.findUnique({ where: { name: config!.templateName }, select: { id: true, name: true, status: true, category: true, body: true, variableCount: true } }) : null;
+  const template = automation ? await prisma.whatsAppTemplate.findUnique({ where: { name: config!.templateName }, select: { id: true, name: true, status: true, category: true, body: true, variableCount: true, language: true } }) : null;
 
   console.log(`[bulkStage] automation=${automation} template=`, template ? { name: template.name, status: template.status } : "null");
 
