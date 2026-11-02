@@ -31,7 +31,7 @@ interface BulkStagePreview {
   templateName: string | null; automationEnabled: boolean; cost: CampaignCost | null; canApply: boolean; problem: string | null;
 }
 interface BulkStageResult {
-  updated: number; unchanged: number; sent: number; failed: number; skipped: number; templateName?: string | null;
+  updated: number; unchanged: number; sent: number; failed: number; skipped: number; templateName?: string | null; skipReason?: string | null;
   results: { contactId: string; name: string; status: "SENT" | "FAILED"; reason?: string }[];
 }
 
@@ -152,10 +152,11 @@ export default function ContactsPage() {
       />
 
       {bulkResult && <Card><CardHeader><CardTitle>Bulk stage update result</CardTitle></CardHeader><CardContent className="flex flex-col gap-2 text-sm">
-        <p>{bulkResult.updated} stages updated · {bulkResult.unchanged} already in this stage · {bulkResult.sent} sent · {bulkResult.failed} failed · {bulkResult.skipped} without a message</p>
-        {bulkResult.templateName && <p>Template: {bulkResult.templateName}</p>}
+        <p>{bulkResult.updated} stages updated · {bulkResult.unchanged} already in this stage · {bulkResult.sent} sent · {bulkResult.failed} failed · {bulkResult.skipped > 0 ? `${bulkResult.skipped} without a message` : "0 skipped"}</p>
+        {bulkResult.templateName && <p className="text-green-600 dark:text-green-400">Template sent: {bulkResult.templateName}</p>}
+        {bulkResult.skipped > 0 && bulkResult.skipReason && <p className="text-amber-600 dark:text-amber-400">Skip reason: {bulkResult.skipReason}</p>}
         {bulkResult.failed > 0 && <p className="text-destructive">Stages were updated, but some messages failed. Review the failures below; applying the same stage again will not resend messages.</p>}
-        <ul className="max-h-48 overflow-auto">{bulkResult.results.filter((result) => result.status === "FAILED").map((result) => <li key={result.contactId}>{result.name}: {result.reason}</li>)}</ul>
+        <ul className="max-h-48 overflow-auto">{bulkResult.results.filter((result) => result.status === "FAILED").map((result) => <li key={result.contactId} className="text-destructive">{result.name}: {result.reason}</li>)}</ul>
         <Button variant="ghost" size="sm" onClick={() => setBulkResult(null)}>Dismiss result</Button>
       </CardContent></Card>}
 
