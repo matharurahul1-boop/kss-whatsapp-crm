@@ -525,10 +525,10 @@ export default function ConversationsPage() {
     try {
       const reg = await navigator.serviceWorker.ready;
       // Get VAPID public key from server
-      const { data } = await api.get<{ publicKey: string }>("/push/vapid-public-key");
+      const vapid = await api.get<{ publicKey: string }>("/push/vapid-public-key");
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: data.publicKey,
+        applicationServerKey: vapid.publicKey,
       });
       await api.post("/push/subscribe", sub.toJSON());
       setNotifEnabled(true);
