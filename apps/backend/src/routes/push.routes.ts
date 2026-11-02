@@ -8,11 +8,14 @@ import { env } from "../config/env";
 const router = Router();
 router.use(requireAuth);
 
-webpush.setVapidDetails(
-  `mailto:${env.vapidEmail}`,
-  env.vapidPublicKey,
-  env.vapidPrivateKey,
-);
+// Only initialise VAPID when all three keys are present — missing keys just disable push
+if (env.vapidPublicKey && env.vapidPrivateKey && env.vapidEmail) {
+  try {
+    webpush.setVapidDetails(`mailto:${env.vapidEmail}`, env.vapidPublicKey, env.vapidPrivateKey);
+  } catch (err) {
+    console.warn("[push] VAPID init failed — push notifications disabled:", err);
+  }
+}
 
 // Save push subscription for current user
 router.post(
