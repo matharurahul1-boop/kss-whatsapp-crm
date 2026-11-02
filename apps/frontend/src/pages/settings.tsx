@@ -237,6 +237,7 @@ export default function SettingsPage() {
       templateName: string;
       language: string;
       enabled: boolean;
+      variables?: Record<string, string>;
     }
 
     const { data: triggers, refetch, isLoading } = useQuery({
@@ -252,8 +253,8 @@ export default function SettingsPage() {
     const approvedTemplates = templates?.items ?? [];
 
     const saveMutation = useMutation({
-      mutationFn: ({ event, templateName, language, enabled }: Omit<TriggerRow, "label" | "recipient">) =>
-        api.put(`/triggers/${event}`, { templateName, language, enabled }),
+      mutationFn: ({ event, templateName, language, enabled, variables }: Omit<TriggerRow, "label" | "recipient">) =>
+        api.put(`/triggers/${event}`, { templateName, language, enabled, variables }),
       onSuccess: () => { refetch(); toast({ title: "Trigger saved", variant: "success" }); },
       onError:   () => toast({ title: "Failed to save", variant: "destructive" }),
     });
@@ -268,14 +269,35 @@ export default function SettingsPage() {
       const [tplName, setTplName] = useState(row.templateName ?? "");
       const [lang, setLang]       = useState(row.language ?? "en");
       const [enabled, setEnabled] = useState(row.enabled ?? false);
+      // variables stored as JSON text for editing, e.g. {"2":"order-ref","3":"+91 88003 49401"}
+      const [varsText, setVarsText] = useState(() => {
+        const v = row.variables;
+        return v && Object.keys(v).length > 0 ? JSON.stringify(v) : "";
+      });
+      const [varsError, setVarsError] = useState("");
 
       useEffect(() => {
         setTplName(row.templateName ?? "");
         setLang(row.language ?? "en");
         setEnabled(row.enabled ?? false);
-      }, [row.templateName, row.language, row.enabled]);
+        const v = row.variables;
+        setVarsText(v && Object.keys(v).length > 0 ? JSON.stringify(v) : "");
+      }, [row.templateName, row.language, row.enabled, row.variables]);
 
-      const isDirty = tplName !== (row.templateName ?? "") || lang !== (row.language ?? "en") || enabled !== (row.enabled ?? false);
+      function parseVars(): Record<string, string> | undefined {
+        if (!varsText.trim()) return undefined;
+        try {
+          const parsed = JSON.parse(varsText);
+          setVarsError("");
+          return parsed;
+        } catch {
+          setVarsError("Invalid JSON");
+          return undefined;
+        }
+      }
+
+      const savedVarsText = row.variables && Object.keys(row.variables).length > 0 ? JSON.stringify(row.variables) : "";
+      const isDirty = tplName !== (row.templateName ?? "") || lang !== (row.language ?? "en") || enabled !== (row.enabled ?? false) || varsText !== savedVarsText;
 
       return (
         <div className={cn(
@@ -346,12 +368,27 @@ export default function SettingsPage() {
             <Button
               size="sm"
               variant={isDirty ? "default" : "outline"}
-              disabled={saveMutation.isPending}
-              onClick={() => saveMutation.mutate({ event: row.event, templateName: tplName, language: lang, enabled })}
+              disabled={saveMutation.isPending || !!varsError}
+              onClick={() => saveMutation.mutate({ event: row.event, templateName: tplName, language: lang, enabled, variables: parseVars() })}
               className="shrink-0 h-8"
             >
               Save
             </Button>
+          </div>
+
+          {/* Extra variables ({{2}} onwards) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">
+              Extra variables <span className="font-mono">&#123;&#123;2&#125;&#125;</span>+ — JSON, e.g. <span className="font-mono text-primary">&#123;"2":"your order","3":"+91 88003 49401"&#125;</span>
+              <span className="ml-1 text-muted-foreground/60">(&#123;&#123;1&#125;&#125; is always the customer name)</span>
+            </label>
+            <Input
+              className={cn("h-8 text-xs font-mono", varsError && "border-destructive")}
+              placeholder='{"2":"value","3":"value"}'
+              value={varsText}
+              onChange={(e) => { setVarsText(e.target.value); setVarsError(""); }}
+            />
+            {varsError && <p className="text-xs text-destructive">{varsError}</p>}
           </div>
         </div>
       );

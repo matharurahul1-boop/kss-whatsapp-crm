@@ -5,6 +5,7 @@ import { applyDeliveryEvent, DeliveryEventType } from "../services/notificationE
 import { prisma } from "../lib/prisma";
 import { updateOutboundMessageStatus } from "../services/conversationService";
 import { createClient } from "@supabase/supabase-js";
+import { sendPushToAllUsers } from "./push.routes";
 
 const router = Router();
 
@@ -229,6 +230,11 @@ async function handleInboundMessage(msg: MetaInboundMessage, senderName?: string
       unreadCount: { increment: 1 },
     },
   });
+
+  // Push notification to all users
+  const displayName = senderName ?? rawPhone;
+  const preview = body ? (body.length > 60 ? body.slice(0, 60) + "…" : body) : type !== "TEXT" ? `📎 ${type.toLowerCase()}` : "New message";
+  void sendPushToAllUsers({ title: `New message from ${displayName}`, body: preview, url: "/conversations" });
 }
 
 async function sendAutoReply(to: string, senderName?: string) {

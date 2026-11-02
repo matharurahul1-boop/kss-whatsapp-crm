@@ -24,6 +24,7 @@ import uploadRoutes from "./routes/upload.routes";
 import v1Routes from "./routes/v1";
 import triggersRoutes from "./routes/triggers.routes";
 import walletRoutes from "./routes/wallet.routes";
+import pushRoutes from "./routes/push.routes";
 
 // Load Meta config from DB once per process (warm Vercel instances reuse it)
 let configLoaded = false;
@@ -94,6 +95,7 @@ export function createApp() {
   app.use("/api/triggers", triggersRoutes);
   app.use("/api/wallet", walletRoutes);
   app.use("/api/billing", billingRoutes);
+  app.use("/api/push", pushRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -522,10 +522,24 @@ export default function ConversationsPage() {
   };
 
   const handleEnableNotifications = async () => {
-    const granted = await requestNotificationPermission();
-    setNotifEnabled(granted);
-    if (granted) toast({ title: "Notifications enabled", description: "You'll be notified when a new message arrives." });
-    else toast({ title: "Permission denied", description: "Allow notifications in browser settings.", variant: "destructive" });
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      // Get VAPID public key from server
+      const { data } = await api.get<{ publicKey: string }>("/push/vapid-public-key");
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: data.publicKey,
+      });
+      await api.post("/push/subscribe", sub.toJSON());
+      setNotifEnabled(true);
+      toast({ title: "Push notifications enabled", description: "You'll get notified even when the tab is closed." });
+    } catch {
+      // Fallback to browser notifications
+      const granted = await requestNotificationPermission();
+      setNotifEnabled(granted);
+      if (granted) toast({ title: "Notifications enabled", description: "You'll be notified when a new message arrives." });
+      else toast({ title: "Permission denied", description: "Allow notifications in browser settings.", variant: "destructive" });
+    }
   };
 
   return (

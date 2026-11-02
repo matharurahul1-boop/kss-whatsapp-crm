@@ -39,12 +39,15 @@ async function fireTriggerForStage(stage: string, phone: string, contactName: st
   try {
     const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event } });
     if (!cfg?.enabled || !cfg.templateName) return;
+    // Merge: {1: contactName} + any static variables saved in trigger config
+    const staticVars: Record<string, string> = cfg.variables && typeof cfg.variables === "object" ? cfg.variables as Record<string, string> : {};
+    const variables = { "1": contactName, ...staticVars };
     const wa = getWhatsAppService();
     const result = await wa.sendMessage({
       phone,
       templateName: cfg.templateName,
       language: cfg.language ?? "en",
-      variables: { "1": contactName },
+      variables,
     });
     await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
   } catch (err) {

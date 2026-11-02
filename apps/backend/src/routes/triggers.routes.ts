@@ -79,6 +79,7 @@ router.put(
       templateName: z.string(),
       language:     z.string().default("en"),
       enabled:      z.boolean(),
+      variables:    z.record(z.string()).optional(), // e.g. { "2": "your order", "3": "+91 88003 49401" }
     }).parse(req.body);
 
     const def = TRIGGER_DEFS.find((d) => d.event === event)!;
