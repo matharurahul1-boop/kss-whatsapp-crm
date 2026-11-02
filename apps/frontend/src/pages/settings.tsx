@@ -267,7 +267,7 @@ export default function SettingsPage() {
 
     function TriggerRow({ row }: { row: TriggerRow }) {
       const [tplName, setTplName] = useState(row.templateName ?? "");
-      const [lang, setLang]       = useState(row.language ?? "en");
+      const [lang, setLang]       = useState(row.language ?? "en_US");
       const [enabled, setEnabled] = useState(row.enabled ?? false);
       // variables stored as JSON text for editing, e.g. {"2":"order-ref","3":"+91 88003 49401"}
       const [varsText, setVarsText] = useState(() => {
@@ -278,7 +278,7 @@ export default function SettingsPage() {
 
       useEffect(() => {
         setTplName(row.templateName ?? "");
-        setLang(row.language ?? "en");
+        setLang(row.language ?? "en_US");
         setEnabled(row.enabled ?? false);
         const v = row.variables;
         setVarsText(v && Object.keys(v).length > 0 ? JSON.stringify(v) : "");
@@ -297,7 +297,7 @@ export default function SettingsPage() {
       }
 
       const savedVarsText = row.variables && Object.keys(row.variables).length > 0 ? JSON.stringify(row.variables) : "";
-      const isDirty = tplName !== (row.templateName ?? "") || lang !== (row.language ?? "en") || enabled !== (row.enabled ?? false) || varsText !== savedVarsText;
+      const isDirty = tplName !== (row.templateName ?? "") || lang !== (row.language ?? "en_US") || enabled !== (row.enabled ?? false) || varsText !== savedVarsText;
 
       return (
         <div className={cn(

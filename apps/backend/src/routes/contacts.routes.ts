@@ -46,7 +46,7 @@ async function fireTriggerForStage(stage: string, phone: string, contactName: st
     const result = await wa.sendMessage({
       phone,
       templateName: cfg.templateName,
-      language: cfg.language ?? "en",
+      language: cfg.language ?? "en_US",
       variables,
     });
     await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });

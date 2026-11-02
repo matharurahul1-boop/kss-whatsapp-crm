@@ -44,7 +44,7 @@ async function seedTriggers() {
         label:        d.label,
         recipient:    d.recipient,
         templateName: "",
-        language:     "en",
+        language:     "en_US",
         enabled:      false,
       })),
       skipDuplicates: true,
@@ -114,7 +114,7 @@ router.post(
       const result = await wa.sendMessage({
         phone,
         templateName: cfg.templateName,
-        language:     cfg.language,
+        language:     cfg.language ?? "en_US",
         variables:    variables ?? (contactName ? { "1": contactName } : {}),
       });
       await recordOutboundMessage({
