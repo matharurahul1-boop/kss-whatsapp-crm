@@ -276,8 +276,9 @@ model StageTemplate {
   id           String       @id @default(cuid())
   stage        ContactStage @unique
   templateName String
-  language     String       @default("en")
+  language     String       @default("en_US")
   enabled      Boolean      @default(true)
+  variables    Json?        // extra static variables merged with {1: contactName} at send time
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }

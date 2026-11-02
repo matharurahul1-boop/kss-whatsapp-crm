@@ -452,14 +452,14 @@ export default function SettingsPage() {
 
     const { data: stageTpls, refetch } = useQuery({
       queryKey: ["stage-templates"],
-      queryFn: () => api.get<{ stage: string; templateName: string; language: string; enabled: boolean }[]>("/contacts/stage-templates"),
+      queryFn: () => api.get<{ stage: string; templateName: string; language: string; enabled: boolean; variables?: Record<string,string> }[]>("/contacts/stage-templates"),
     });
 
     const approvedTemplates = templates?.items ?? [];
 
     const saveMutation = useMutation({
-      mutationFn: ({ stage, templateName, language, enabled }: { stage: string; templateName: string; language: string; enabled: boolean }) =>
-        api.put(`/contacts/stage-templates/${stage}`, { templateName, language, enabled }),
+      mutationFn: ({ stage, templateName, language, enabled, variables }: { stage: string; templateName: string; language: string; enabled: boolean; variables?: Record<string,string> }) =>
+        api.put(`/contacts/stage-templates/${stage}`, { templateName, language, enabled, variables }),
       onSuccess: () => { refetch(); toast({ title: "Saved", variant: "success" }); },
       onError: () => toast({ title: "Failed to save", variant: "destructive" }),
     });
@@ -469,58 +469,84 @@ export default function SettingsPage() {
       const [tplName, setTplName] = useState(current?.templateName ?? "");
       const [lang, setLang] = useState(current?.language ?? "en_US");
       const [enabled, setEnabled] = useState(current?.enabled ?? true);
+      const [varsText, setVarsText] = useState(() => {
+        const v = current?.variables;
+        return v && Object.keys(v).length > 0 ? JSON.stringify(v) : "";
+      });
+      const [varsError, setVarsError] = useState("");
 
       useEffect(() => {
         setTplName(current?.templateName ?? "");
         setLang(current?.language ?? "en_US");
         setEnabled(current?.enabled ?? true);
-      }, [current?.templateName, current?.language, current?.enabled]);
+        const v = current?.variables;
+        setVarsText(v && Object.keys(v).length > 0 ? JSON.stringify(v) : "");
+      }, [current?.templateName, current?.language, current?.enabled, current?.variables]);
+
+      function parseVars(): Record<string, string> | undefined {
+        if (!varsText.trim()) return undefined;
+        try { setVarsError(""); return JSON.parse(varsText); }
+        catch { setVarsError("Invalid JSON"); return undefined; }
+      }
 
       return (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b last:border-0">
-          <div className="w-40 shrink-0">
-            <p className="text-sm font-medium">{STAGE_LABELS[stage]}</p>
-            <p className="text-xs text-muted-foreground">{stage === "ENQUIRY" ? "Sent on contact create" : "Sent on stage change"}</p>
-          </div>
+        <div className="flex flex-col gap-2 py-4 border-b last:border-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="w-40 shrink-0">
+              <p className="text-sm font-medium">{STAGE_LABELS[stage]}</p>
+              <p className="text-xs text-muted-foreground">{stage === "ENQUIRY" ? "Sent on contact create" : "Sent on stage change"}</p>
+            </div>
 
-          <div className="flex-1 flex flex-col sm:flex-row gap-2">
-            <Select value={tplName || "__none__"} onValueChange={(v) => setTplName(v === "__none__" ? "" : v)}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select template..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">— No template —</SelectItem>
-                {approvedTemplates.map((t) => (
-                  <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex-1 flex flex-col sm:flex-row gap-2">
+              <Select value={tplName || "__none__"} onValueChange={(v) => setTplName(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— No template —</SelectItem>
+                  {approvedTemplates.map((t) => (
+                    <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Input
-              className="w-24 shrink-0"
-              placeholder="Language"
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-            />
-
-            <label className="flex items-center gap-1.5 text-sm shrink-0 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="rounded"
+              <Input
+                className="w-24 shrink-0"
+                placeholder="Language"
+                value={lang}
+                onChange={(e) => setLang(e.target.value)}
               />
-              Active
-            </label>
 
-            <Button
-              size="sm"
-              disabled={!tplName || saveMutation.isPending}
-              onClick={() => saveMutation.mutate({ stage, templateName: tplName, language: lang, enabled })}
-            >
-              Save
-            </Button>
+              <label className="flex items-center gap-1.5 text-sm shrink-0 cursor-pointer">
+                <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="rounded" />
+                Active
+              </label>
+
+              <Button
+                size="sm"
+                disabled={!tplName || saveMutation.isPending || !!varsError}
+                onClick={() => saveMutation.mutate({ stage, templateName: tplName, language: lang, enabled, variables: parseVars() })}
+              >
+                Save
+              </Button>
+            </div>
           </div>
+
+          {tplName && (
+            <div className="flex flex-col gap-1 pl-0 sm:pl-44">
+              <label className="text-xs text-muted-foreground">
+                Extra variables <span className="font-mono">&#123;&#123;2&#125;&#125;</span>+ — e.g. <span className="font-mono text-primary">&#123;"2":"your order","3":"+91 88003 49401"&#125;</span>
+                <span className="ml-1 text-muted-foreground/60">(&#123;&#123;1&#125;&#125; = customer name auto)</span>
+              </label>
+              <Input
+                className={cn("h-8 text-xs font-mono", varsError && "border-destructive")}
+                placeholder='{"2":"value","3":"value"}'
+                value={varsText}
+                onChange={(e) => { setVarsText(e.target.value); setVarsError(""); }}
+              />
+              {varsError && <p className="text-xs text-destructive">{varsError}</p>}
+            </div>
+          )}
         </div>
       );
     }

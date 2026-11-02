@@ -28,7 +28,6 @@ async function prepare(input: BulkStageInput) {
   const cost = automation && template?.status === "APPROVED" && valid.length > 0 ? await estimateCampaignCost(template.category, valid.length) : null;
   const problem = !changed.length ? "Selected contacts are already in this stage. No messages will be resent."
     : automation && (!template || template.status !== "APPROVED") ? "The assigned stage template must exist and be approved before sending. Ask the Manager to check Stage Automation."
-    : automation && template && template.variableCount > 1 ? "This stage template needs multiple variables. Stage automation currently supports the contact name in {{1}} only. Ask the Manager to use a compatible template."
     : cost && cost.rateInr == null ? "The template category price has not been configured."
     : cost && !cost.canSend ? "Insufficient wallet balance. Top up ₹" + cost.shortfall + " before updating and sending."
     : null;
@@ -62,7 +61,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string) {
     const sends = plan.automation ? changed.filter((contact) => isValidPhone(normalizePhone(contact.phone))).map((contact) => ({ contact, notificationId: randomUUID() })) : [];
     if (sends.length) await tx.notification.createMany({ data: sends.map(({ contact, notificationId }) => ({
       id: notificationId, contactId: contact.id, phone: normalizePhone(contact.phone), templateId: plan.template!.id,
-      channel: "SINGLE", status: "QUEUED", variables: plan.template!.variableCount ? { "1": contact.name } : {},
+      channel: "SINGLE", status: "QUEUED", variables: { "1": contact.name, ...(plan.config!.variables as Record<string,string> ?? {}) },
     })) });
     await tx.auditLog.create({ data: { userId, action: "CONTACTS_BULK_STAGE", description: changed.length + " contacts moved to " + input.stage,
       metadata: { operationId, stage: input.stage, contactIds: changed.map((contact) => contact.id), templateName: plan.template?.name ?? null, queued: sends.length },
@@ -76,7 +75,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string) {
       let result;
       try {
         result = await service!.sendMessage({ phone: normalizePhone(contact.phone), templateName: plan.template!.name,
-          language: plan.config!.language, variables: plan.template!.variableCount ? { "1": contact.name } : {} });
+          language: plan.config!.language, variables: { "1": contact.name, ...(plan.config!.variables as Record<string,string> ?? {}) } });
       } catch {
         result = { status: "failed" as const, messageId: "", failReason: "Message provider unavailable. The send could not be confirmed." };
       }

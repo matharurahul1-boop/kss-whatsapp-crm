@@ -343,16 +343,17 @@ router.put(
   "/stage-templates/:stage",
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const { stage } = req.params;
-    const { templateName, language, enabled } = z.object({
+    const { templateName, language, enabled, variables } = z.object({
       templateName: z.string(),
       language: z.string().default("en_US"),
       enabled: z.boolean().default(true),
+      variables: z.record(z.string()).optional(),
     }).parse(req.body);
 
     const row = await (prisma as any).stageTemplate.upsert({
       where: { stage },
-      update: { templateName, language, enabled },
-      create: { stage, templateName, language, enabled },
+      update: { templateName, language, enabled, variables },
+      create: { stage, templateName, language, enabled, variables },
     });
 
     res.json({ success: true, data: row });
