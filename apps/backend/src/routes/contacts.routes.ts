@@ -327,7 +327,8 @@ router.post("/bulk-stage/preview", asyncHandler(async (req, res) => {
   res.json({ success: true, data: await previewBulkStage(bulkStageSchema.parse(req.body)) });
 }));
 router.post("/bulk-stage", asyncHandler(async (req: AuthenticatedRequest, res) => {
-  res.json({ success: true, data: await applyBulkStage(bulkStageSchema.parse(req.body), req.user!.userId) });
+  const extraVariables = req.body.extraVariables as Record<string, string> | undefined;
+  res.json({ success: true, data: await applyBulkStage(bulkStageSchema.parse(req.body), req.user!.userId, extraVariables) });
 }));
 
 // Stage templates config routes

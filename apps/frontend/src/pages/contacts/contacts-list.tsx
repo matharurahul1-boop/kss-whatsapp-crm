@@ -29,6 +29,7 @@ import { CsvImportDialog } from "./csv-import-dialog";
 interface BulkStagePreview {
   selected: number; changed: number; unchanged: number; invalidPhones: number; messagesToSend: number;
   templateName: string | null; automationEnabled: boolean; cost: CampaignCost | null; canApply: boolean; problem: string | null;
+  missingVars?: number[];
 }
 interface BulkStageResult {
   updated: number; unchanged: number; sent: number; failed: number; skipped: number; templateName?: string | null; skipReason?: string | null;
@@ -55,6 +56,7 @@ export default function ContactsPage() {
   const [bulkStageOpen, setBulkStageOpen] = useState(false);
   const [pendingBulkStage, setPendingBulkStage] = useState<ContactStage | "">("");
   const [bulkResult, setBulkResult] = useState<BulkStageResult | null>(null);
+  const [extraVars, setExtraVars] = useState<Record<string, string>>({});
 
   const params = new URLSearchParams({ page: String(page), pageSize: "10" });
   if (search)      params.set("search", search);
@@ -84,8 +86,8 @@ export default function ContactsPage() {
   });
 
   const bulkStageMutation = useMutation({
-    mutationFn: ({ ids, stage }: { ids: string[]; stage: ContactStage }) =>
-      api.post<BulkStageResult>("/contacts/bulk-stage", { ids, stage }),
+    mutationFn: ({ ids, stage, extraVariables }: { ids: string[]; stage: ContactStage; extraVariables?: Record<string, string> }) =>
+      api.post<BulkStageResult>("/contacts/bulk-stage", { ids, stage, extraVariables }),
     onSuccess: (result, vars) => {
       for (const key of ["contacts", "dashboard-summary", "delivery-overview", "stage-funnel", "notifications", "conversations", "wallet", "wallet-summary", "balance-alert", "billing-report"]) queryClient.invalidateQueries({ queryKey: [key] });
       setBulkResult(result);
@@ -131,7 +133,11 @@ export default function ContactsPage() {
 
   const applyBulkStage = () => {
     if (!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkStageMutation.isPending) return;
-    bulkStageMutation.mutate({ ids: Array.from(selectedIds), stage: pendingBulkStage });
+    const missingVars = bulkPreview.data?.missingVars ?? [];
+    const allFilled = missingVars.every((n) => (extraVars[String(n)] ?? "").trim() !== "");
+    if (!allFilled) return;
+    const extraVariables = Object.keys(extraVars).length > 0 ? extraVars : undefined;
+    bulkStageMutation.mutate({ ids: Array.from(selectedIds), stage: pendingBulkStage, extraVariables });
   };
 
   return (
@@ -333,7 +339,7 @@ export default function ContactsPage() {
         <DialogContent><DialogHeader><DialogTitle>Change stage for selected contacts</DialogTitle></DialogHeader>
           <p className="text-sm">{selectedIds.size} contacts selected across pages. Up to 200 per batch.</p>
           <label htmlFor="bulk-contact-stage" className="text-sm font-medium">New stage</label>
-          <select id="bulk-contact-stage" className="rounded-lg border border-border bg-background px-3 py-2 text-sm" value={pendingBulkStage} disabled={bulkStageMutation.isPending} onChange={(event) => setPendingBulkStage(event.target.value as ContactStage)}>
+          <select id="bulk-contact-stage" className="rounded-lg border border-border bg-background px-3 py-2 text-sm" value={pendingBulkStage} disabled={bulkStageMutation.isPending} onChange={(event) => { setPendingBulkStage(event.target.value as ContactStage); setExtraVars({}); }}>
             <option value="">Pick a stage…</option>{ALL_STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
           </select>
           {selectedIds.size > 200 && <p className="text-sm text-destructive">Select at most 200 contacts.</p>}
@@ -344,10 +350,26 @@ export default function ContactsPage() {
             {bulkPreview.data.automationEnabled ? <><p className="font-medium">Template: {bulkPreview.data.templateName}</p><p>{bulkPreview.data.messagesToSend} messages will be sent automatically after updating.</p></> : <p>No enabled template is assigned to this stage. Only the stage will update; no message will be sent.</p>}
             {bulkPreview.data.invalidPhones > 0 && <p>{bulkPreview.data.invalidPhones} invalid phone numbers: stage updates only, no message.</p>}
             {bulkPreview.data.cost && <p>Estimated cost: {bulkPreview.data.cost.estimatedCost == null ? "Rate not configured" : formatInr(bulkPreview.data.cost.estimatedCost)} · Balance: {formatInr(bulkPreview.data.cost.availableBalance)}</p>}
+            {(bulkPreview.data.missingVars?.length ?? 0) > 0 && (
+              <div className="flex flex-col gap-2 border-t border-border pt-2 mt-1">
+                <p className="font-medium text-amber-600 dark:text-amber-400">Fill in the missing template variables:</p>
+                {bulkPreview.data.missingVars!.map((n) => (
+                  <div key={n} className="flex items-center gap-2">
+                    <span className="w-10 shrink-0 text-xs font-mono text-muted-foreground">{`{{${n}}}`}</span>
+                    <input
+                      className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
+                      placeholder={`Value for {{${n}}}`}
+                      value={extraVars[String(n)] ?? ""}
+                      onChange={(e) => setExtraVars((prev) => ({ ...prev, [String(n)]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             {bulkPreview.data.problem && <p className="text-destructive">{bulkPreview.data.problem}</p>}
           </div>}
           <DialogFooter><Button variant="outline" disabled={bulkStageMutation.isPending} onClick={() => setBulkStageOpen(false)}>Cancel</Button>
-            <Button disabled={!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkPreview.isError || selectedIds.size > 200 || bulkStageMutation.isPending} loading={bulkStageMutation.isPending} onClick={applyBulkStage}>
+            <Button disabled={!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkPreview.isError || selectedIds.size > 200 || bulkStageMutation.isPending || (bulkPreview.data?.missingVars ?? []).some((n) => !(extraVars[String(n)] ?? "").trim())} loading={bulkStageMutation.isPending} onClick={applyBulkStage}>
               {bulkStageMutation.isPending ? "Updating and sending…" : bulkPreview.data?.messagesToSend ? "Update stage & send" : "Update stage"}
             </Button>
           </DialogFooter>

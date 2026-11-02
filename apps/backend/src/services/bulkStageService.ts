@@ -44,6 +44,12 @@ async function prepare(input: BulkStageInput) {
 
   const cost = automation && template?.status === "APPROVED" && valid.length > 0 ? await estimateCampaignCost(template.category, valid.length) : null;
 
+  // Which variable numbers (2, 3, ...) are needed by the template but NOT in config.variables?
+  const configuredNums = new Set(Object.keys(config?.variables ?? {}).map(Number));
+  const missingVars: number[] = template
+    ? Array.from({ length: Math.max(0, template.variableCount - 1) }, (_, i) => i + 2).filter((n) => !configuredNums.has(n))
+    : [];
+
   // Build human-readable skip reason for the UI
   let skipReason: string | null = null;
   if (!automation) {
@@ -64,7 +70,7 @@ async function prepare(input: BulkStageInput) {
     : cost && !cost.canSend ? "Insufficient wallet balance. Top up ₹" + cost.shortfall + " before updating and sending."
     : null;
 
-  return { contacts, changed, config, template, automation, valid, cost, problem, skipReason };
+  return { contacts, changed, config, template, automation, valid, cost, problem, skipReason, missingVars };
 }
 
 export async function previewBulkStage(input: BulkStageInput) {
@@ -77,10 +83,11 @@ export async function previewBulkStage(input: BulkStageInput) {
     automationEnabled: plan.automation, cost: plan.cost,
     canApply: plan.problem == null, problem: plan.problem,
     skipReason: plan.skipReason,
+    missingVars: plan.missingVars,
   };
 }
 
-export async function applyBulkStage(input: BulkStageInput, userId: string) {
+export async function applyBulkStage(input: BulkStageInput, userId: string, extraVariables?: Record<string, string>) {
   const plan = await prepare(input);
   if (!plan.changed.length) return { updated: 0, unchanged: plan.contacts.length, sent: 0, failed: 0, skipped: 0, skipReason: null, results: [] };
   if (plan.problem) throw new ApiError(plan.cost && !plan.cost.canSend && plan.cost.rateInr != null ? 402 : 400, "BULK_STAGE_BLOCKED", plan.problem);
@@ -96,7 +103,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string) {
       : [];
     if (sends.length) await tx.notification.createMany({ data: sends.map(({ contact, notificationId }) => ({
       id: notificationId, contactId: contact.id, phone: normalizePhone(contact.phone), templateId: plan.template!.id,
-      channel: "SINGLE", status: "QUEUED", variables: { "1": contact.name, ...(plan.config!.variables ?? {}) },
+      channel: "SINGLE", status: "QUEUED", variables: { "1": contact.name, ...(plan.config!.variables ?? {}), ...(extraVariables ?? {}) },
     })) });
     await tx.auditLog.create({ data: { userId, action: "CONTACTS_BULK_STAGE", description: changed.length + " contacts moved to " + input.stage,
       metadata: { operationId, stage: input.stage, contactIds: changed.map((contact) => contact.id), templateName: plan.template?.name ?? null, queued: sends.length },
@@ -109,7 +116,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string) {
 
   for (let offset = 0; offset < claimed.sends.length; offset += 5) {
     const batch = await Promise.all(claimed.sends.slice(offset, offset + 5).map(async ({ contact, notificationId }) => {
-      const vars = { "1": contact.name, ...(plan.config!.variables ?? {}) };
+      const vars = { "1": contact.name, ...(plan.config!.variables ?? {}), ...(extraVariables ?? {}) };
       console.log(`[bulkStage] sending to ${contact.phone} template=${plan.template!.name} lang=${plan.config!.language} vars=`, vars);
       let result;
       try {
