@@ -110,11 +110,14 @@ router.post(
     }
 
     try {
+      // Use Meta-registered language from WhatsAppTemplate
+      const tpl = await (prisma as any).whatsAppTemplate.findUnique({ where: { name: cfg.templateName }, select: { language: true } });
+      const language = tpl?.language || cfg.language || "en_US";
       const wa = getWhatsAppService();
       const result = await wa.sendMessage({
         phone,
         templateName: cfg.templateName,
-        language:     cfg.language ?? "en_US",
+        language,
         variables:    variables ?? (contactName ? { "1": contactName } : {}),
       });
       await recordOutboundMessage({

@@ -117,13 +117,15 @@ export async function applyBulkStage(input: BulkStageInput, userId: string, extr
   for (let offset = 0; offset < claimed.sends.length; offset += 5) {
     const batch = await Promise.all(claimed.sends.slice(offset, offset + 5).map(async ({ contact, notificationId }) => {
       const vars = { "1": contact.name, ...(plan.config!.variables ?? {}), ...(extraVariables ?? {}) };
-      console.log(`[bulkStage] sending to ${contact.phone} template=${plan.template!.name} lang=${plan.config!.language} vars=`, vars);
+      // Use template's own language (as registered in Meta) — not config language
+      const lang = plan.template!.language || plan.config!.language;
+      console.log(`[bulkStage] sending to ${contact.phone} template=${plan.template!.name} lang=${lang} vars=`, vars);
       let result;
       try {
         result = await service!.sendMessage({
           phone: normalizePhone(contact.phone),
           templateName: plan.template!.name,
-          language: plan.config!.language,
+          language: lang,
           variables: vars,
         });
         console.log(`[bulkStage] sendMessage result for ${contact.phone}:`, result);

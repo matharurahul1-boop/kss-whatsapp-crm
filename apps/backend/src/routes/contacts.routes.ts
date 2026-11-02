@@ -39,16 +39,15 @@ async function fireTriggerForStage(stage: string, phone: string, contactName: st
   try {
     const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event } });
     if (!cfg?.enabled || !cfg.templateName) return;
-    // Merge: {1: contactName} + any static variables saved in trigger config
+    // Use Meta-registered language from WhatsAppTemplate, fall back to config language
+    const tpl = await prisma.whatsAppTemplate.findUnique({ where: { name: cfg.templateName }, select: { language: true } });
+    const language = tpl?.language || cfg.language || "en_US";
     const staticVars: Record<string, string> = cfg.variables && typeof cfg.variables === "object" ? cfg.variables as Record<string, string> : {};
     const variables = { "1": contactName, ...staticVars };
+    console.log(`[trigger] firing ${event} → template=${cfg.templateName} lang=${language} phone=${phone}`);
     const wa = getWhatsAppService();
-    const result = await wa.sendMessage({
-      phone,
-      templateName: cfg.templateName,
-      language: cfg.language ?? "en_US",
-      variables,
-    });
+    const result = await wa.sendMessage({ phone, templateName: cfg.templateName, language, variables });
+    console.log(`[trigger] ${event} result:`, result);
     await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
   } catch (err) {
     console.error(`[contacts] Trigger "${event}" failed for ${phone}:`, err);
@@ -75,8 +74,11 @@ const STAGE_LABELS: Record<string, string> = {
   LOST:            "Lost",
 };
 
-async function sendTemplateToContact(phone: string, contactName: string, templateName: string, language = "en_US") {
+async function sendTemplateToContact(phone: string, contactName: string, templateName: string, _configLanguage = "en_US") {
   try {
+    // Always use the language Meta registered the template with
+    const tpl = await prisma.whatsAppTemplate.findUnique({ where: { name: templateName }, select: { language: true } });
+    const language = tpl?.language || _configLanguage;
     const wa = getWhatsAppService();
     const result = await wa.sendMessage({
       phone,
