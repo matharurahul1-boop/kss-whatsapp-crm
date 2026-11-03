@@ -6,6 +6,7 @@ import templatesRoutes from "./templates.v1.routes";
 import contactsRoutes from "./contacts.v1.routes";
 import campaignsRoutes from "./campaigns.v1.routes";
 import notificationsRoutes from "./notifications.v1.routes";
+import triggersRoutes from "./triggers.v1.routes";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/templates", templatesRoutes);
 router.use("/contacts", contactsRoutes);
 router.use("/campaigns", campaignsRoutes);
 router.use("/notifications", notificationsRoutes);
+router.use("/triggers", triggersRoutes);
 
 export default router;
