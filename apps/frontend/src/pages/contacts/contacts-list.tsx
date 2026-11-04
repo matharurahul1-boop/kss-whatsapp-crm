@@ -37,6 +37,8 @@ interface BulkStageResult {
 }
 
 const ALL_STAGES = Object.keys(STAGE_LABELS) as ContactStage[];
+interface NotificationOption { event: string; label: string; recipient: "CUSTOMER" | "ADMIN" | "SALESPERSON"; stage: ContactStage | null }
+const RECIPIENT_LABEL: Record<string, string> = { CUSTOMER: "customer", ADMIN: "admins", SALESPERSON: "salespeople" };
 
 export default function ContactsPage() {
   const queryClient = useQueryClient();
@@ -55,6 +57,7 @@ export default function ContactsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStageOpen, setBulkStageOpen] = useState(false);
   const [pendingBulkStage, setPendingBulkStage] = useState<ContactStage | "">("");
+  const [pendingEvent, setPendingEvent] = useState("");
   const [bulkResult, setBulkResult] = useState<BulkStageResult | null>(null);
   const [extraVars, setExtraVars] = useState<Record<string, string>>({});
 
@@ -77,6 +80,13 @@ export default function ContactsPage() {
     },
   });
 
+  const { data: notificationOptions = [] } = useQuery({
+    queryKey: ["notification-options"],
+    queryFn: () => api.get<NotificationOption[]>("/contacts/notification-options"),
+  });
+  const pendingOption = notificationOptions.find((o) => o.event === pendingEvent);
+  const notifyOnly = !!pendingOption && !pendingOption.stage;
+
   const selectedKey = Array.from(selectedIds).sort();
   const bulkPreview = useQuery({
     queryKey: ["bulk-stage-preview", pendingBulkStage, selectedKey],
@@ -95,8 +105,22 @@ export default function ContactsPage() {
       setSelectedIds(new Set());
       setBulkStageOpen(false);
       setPendingBulkStage("");
+      setPendingEvent("");
     },
     onError: (error) => { bulkPreview.refetch(); toast({ title: error instanceof ApiRequestError ? error.message : "Could not complete the bulk update. Refresh contacts and notifications before retrying.", variant: "destructive" }); },
+  });
+
+  const notifyMutation = useMutation({
+    mutationFn: ({ ids, event }: { ids: string[]; event: string }) =>
+      api.post<{ contacts: number; sent: number; skipped: number }>("/contacts/bulk-notify", { ids, event }),
+    onSuccess: (result) => {
+      for (const key of ["notifications", "conversations", "wallet", "wallet-summary", "balance-alert", "billing-report"]) queryClient.invalidateQueries({ queryKey: [key] });
+      toast({ title: result.sent + " messages sent", description: result.skipped ? result.skipped + " contacts got no message (no recipient number or send failed)." : undefined, variant: result.sent ? "success" : "destructive" });
+      setSelectedIds(new Set());
+      setBulkStageOpen(false);
+      setPendingEvent("");
+    },
+    onError: (error) => toast({ title: error instanceof ApiRequestError ? error.message : "Could not send the notification", variant: "destructive" }),
   });
 
   const pageIds = data?.items.map((c) => c.id) ?? [];
@@ -129,6 +153,7 @@ export default function ContactsPage() {
     setSelectedIds(new Set());
     setBulkStageOpen(false);
     setPendingBulkStage("");
+    setPendingEvent("");
   };
 
   const applyBulkStage = () => {
@@ -316,7 +341,7 @@ export default function ContactsPage() {
 
             <div className="h-5 w-px bg-border/60" />
 
-            <Button size="sm" variant="outline" onClick={() => { setPendingBulkStage(""); setBulkStageOpen(true); }} disabled={bulkStageMutation.isPending || selectedIds.size > 200} className="min-w-0 flex-1 gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => { setPendingBulkStage(""); setPendingEvent(""); setBulkStageOpen(true); }} disabled={bulkStageMutation.isPending || selectedIds.size > 200} className="min-w-0 flex-1 gap-1.5">
               <Layers className="h-4 w-4 shrink-0" /><span className="truncate">Change Stage</span>
             </Button>
 
@@ -336,12 +361,14 @@ export default function ContactsPage() {
       )}
 
       <Dialog open={bulkStageOpen} onOpenChange={(open) => { if (!bulkStageMutation.isPending) setBulkStageOpen(open); }}>
-        <DialogContent><DialogHeader><DialogTitle>Change stage for selected contacts</DialogTitle></DialogHeader>
+        <DialogContent><DialogHeader><DialogTitle>Send notification to selected contacts</DialogTitle></DialogHeader>
           <p className="text-sm">{selectedIds.size} contacts selected across pages. Up to 200 per batch.</p>
-          <label htmlFor="bulk-contact-stage" className="text-sm font-medium">New stage</label>
-          <select id="bulk-contact-stage" className="rounded-lg border border-border bg-background px-3 py-2 text-sm" value={pendingBulkStage} disabled={bulkStageMutation.isPending} onChange={(event) => { setPendingBulkStage(event.target.value as ContactStage); setExtraVars({}); }}>
-            <option value="">Pick a stage…</option>{ALL_STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABELS[stage]}</option>)}
+          <label htmlFor="bulk-contact-stage" className="text-sm font-medium">Notification</label>
+          <select id="bulk-contact-stage" className="rounded-lg border border-border bg-background px-3 py-2 text-sm" value={pendingEvent} disabled={bulkStageMutation.isPending || notifyMutation.isPending} onChange={(event) => { const opt = notificationOptions.find((o) => o.event === event.target.value); setPendingEvent(event.target.value); setPendingBulkStage(opt?.stage ?? ""); setExtraVars({}); }}>
+            <option value="">Pick a notification…</option>{notificationOptions.map((o) => <option key={o.event} value={o.event}>{o.label}</option>)}
           </select>
+          {pendingOption?.stage && <p className="text-xs text-muted-foreground">Moves contacts to “{STAGE_LABELS[pendingOption.stage]}” and sends this notification.</p>}
+          {notifyOnly && pendingOption && <p className="rounded-lg border border-border p-3 text-sm">Sends “{pendingOption.label}” to the {RECIPIENT_LABEL[pendingOption.recipient]} for each selected contact. Their stage does not change.</p>}
           {selectedIds.size > 200 && <p className="text-sm text-destructive">Select at most 200 contacts.</p>}
           {pendingBulkStage && bulkPreview.isFetching && <p className="text-sm">Checking stage template and wallet…</p>}
           {pendingBulkStage && bulkPreview.isError && <p className="text-sm text-destructive">{bulkPreview.error instanceof Error ? bulkPreview.error.message : "Could not load stage preview"}</p>}
@@ -368,10 +395,12 @@ export default function ContactsPage() {
             )}
             {bulkPreview.data.problem && <p className="text-destructive">{bulkPreview.data.problem}</p>}
           </div>}
-          <DialogFooter><Button variant="outline" disabled={bulkStageMutation.isPending} onClick={() => setBulkStageOpen(false)}>Cancel</Button>
-            <Button disabled={!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkPreview.isError || selectedIds.size > 200 || bulkStageMutation.isPending || (bulkPreview.data?.missingVars ?? []).some((n) => !(extraVars[String(n)] ?? "").trim())} loading={bulkStageMutation.isPending} onClick={applyBulkStage}>
+          <DialogFooter><Button variant="outline" disabled={bulkStageMutation.isPending || notifyMutation.isPending} onClick={() => setBulkStageOpen(false)}>Cancel</Button>
+            {notifyOnly ? (
+              <Button disabled={selectedIds.size > 200 || notifyMutation.isPending} loading={notifyMutation.isPending} onClick={() => notifyMutation.mutate({ ids: Array.from(selectedIds), event: pendingEvent })}>Send notification</Button>
+            ) : <Button disabled={!pendingBulkStage || !bulkPreview.data?.canApply || bulkPreview.isFetching || bulkPreview.isError || selectedIds.size > 200 || bulkStageMutation.isPending || (bulkPreview.data?.missingVars ?? []).some((n) => !(extraVars[String(n)] ?? "").trim())} loading={bulkStageMutation.isPending} onClick={applyBulkStage}>
               {bulkStageMutation.isPending ? "Updating and sending…" : bulkPreview.data?.messagesToSend ? "Update stage & send" : "Update stage"}
-            </Button>
+            </Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>

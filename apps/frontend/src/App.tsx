@@ -17,6 +17,7 @@ import ApiIntegrationPage from "@/pages/api-integration";
 import LogsPage from "@/pages/logs";
 import WalletPage from "@/pages/wallet";
 import SettingsPage from "@/pages/settings";
+import UsersPage from "@/pages/users";
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/logs" element={<ProtectedRoute allowedRoles={["MANAGER"]}><LogsPage /></ProtectedRoute>} />
         <Route path="/wallet" element={<ProtectedRoute allowedRoles={["MANAGER"]}><WalletPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={["MANAGER"]}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute allowedRoles={["ADMIN", "MANAGER"]}><UsersPage /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Route>
 

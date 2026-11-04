@@ -111,7 +111,7 @@ router.put(
   "/users/:id/role",
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const { role } = z.object({
-      role: z.enum(["ADMIN", "MANAGER", "AGENT"]),
+      role: z.enum(["ADMIN", "MANAGER", "SALESPERSON"]),
     }).parse(req.body);
 
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });

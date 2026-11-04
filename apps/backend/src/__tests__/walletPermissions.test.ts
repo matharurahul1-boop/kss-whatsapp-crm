@@ -8,7 +8,7 @@ vi.mock("../services/walletService", () => ({ getOrCreateWallet: mocks.wallet, g
 import walletRoutes from "../routes/wallet.routes";
 import { errorHandler } from "../middleware/errorHandler";
 const app = express(); app.use(express.json()); app.use("/wallet", walletRoutes); app.use(errorHandler);
-beforeEach(() => { vi.clearAllMocks(); mocks.user.mockResolvedValue({ id: "u1", role: "AGENT" }); mocks.wallet.mockResolvedValue({ id: "default", balance: 2000 }); mocks.rates.mockResolvedValue([]); mocks.transactions.mockResolvedValue([]); mocks.count.mockResolvedValue(0); });
+beforeEach(() => { vi.clearAllMocks(); mocks.user.mockResolvedValue({ id: "u1", role: "SALESPERSON" }); mocks.wallet.mockResolvedValue({ id: "default", balance: 2000 }); mocks.rates.mockResolvedValue([]); mocks.transactions.mockResolvedValue([]); mocks.count.mockResolvedValue(0); });
 describe("wallet permissions use current database role", () => {
  it("blocks agent top-ups even with a stale admin claim", async () => {
    expect((await request(app).post("/wallet/topup").send({ amount: 2000 })).status).toBe(403);
@@ -17,7 +17,7 @@ describe("wallet permissions use current database role", () => {
  it("blocks agent rate changes", async () => {
    expect((await request(app).put("/wallet/rates").send([])).status).toBe(403);
  });
- it.each(["ADMIN", "AGENT"])("blocks %s wallet details, transactions and financial changes", async (role) => {
+ it.each(["ADMIN", "SALESPERSON"])("blocks %s wallet details, transactions and financial changes", async (role) => {
    mocks.user.mockResolvedValue({ id: "u1", role });
    for (const path of ["/wallet", "/wallet/transactions", "/wallet/rates"]) expect((await request(app).get(path)).status).toBe(403);
    expect((await request(app).post("/wallet/topup").send({ amount: 2000 })).status).toBe(403);

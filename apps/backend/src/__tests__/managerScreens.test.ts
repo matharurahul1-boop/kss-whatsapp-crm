@@ -31,11 +31,11 @@ describe("Manager-only Settings, API Integration and Logs", () => {
   db.user.findUnique.mockResolvedValue({ role: "ADMIN" });
   const res = await request(app).get(path); expect(res.status).toBe(403); expect(res.body.error.code).toBe("MANAGER_ONLY");
  });
- it.each(paths)("denies Agent direct API access to %s", async (path) => {
-  db.user.findUnique.mockResolvedValue({ role: "AGENT" });
+ it.each(paths)("denies Salesperson direct API access to %s", async (path) => {
+  db.user.findUnique.mockResolvedValue({ role: "SALESPERSON" });
   expect((await request(app).get(path)).status).toBe(403);
  });
- it.each(["ADMIN", "AGENT"])("blocks %s from creating or modifying settings and API keys", async (role) => {
+ it.each(["ADMIN", "SALESPERSON"])("blocks %s from creating or modifying settings and API keys", async (role) => {
   db.user.findUnique.mockResolvedValue({ role });
   expect((await request(app).post("/api-keys").send({ name: "blocked" })).status).toBe(403);
   expect((await request(app).put("/settings/meta-config").send({ appId: "blocked" })).status).toBe(403);

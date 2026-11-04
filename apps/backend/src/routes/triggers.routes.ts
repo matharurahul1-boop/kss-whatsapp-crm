@@ -6,6 +6,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { getWhatsAppService } from "../services/whatsapp";
 import { recordOutboundMessage } from "../services/conversationService";
+import { recipientFromTemplateName, resolveRecipientPhones, RecipientKind } from "../services/internalRecipients";
 
 const router = Router();
 router.use(requireAuth, requireManager);
@@ -113,21 +114,24 @@ router.post(
       // Use Meta-registered language from WhatsAppTemplate
       const tpl = await (prisma as any).whatsAppTemplate.findUnique({ where: { name: cfg.templateName }, select: { language: true } });
       const language = tpl?.language || cfg.language || "en_US";
+      const kind = recipientFromTemplateName(cfg.templateName, cfg.recipient as RecipientKind);
+      const phones = await resolveRecipientPhones(kind, phone);
+      if (!phones.length) {
+        return res.json({ success: true, data: { fired: false, reason: `No ${kind.toLowerCase()} WhatsApp numbers are configured` } });
+      }
       const wa = getWhatsAppService();
-      const result = await wa.sendMessage({
-        phone,
-        templateName: cfg.templateName,
-        language,
-        variables:    variables ?? (contactName ? { "1": contactName } : {}),
-      });
-      await recordOutboundMessage({
-        phone,
-        waMessageId:  result.messageId,
-        body:         null,
-        templateName: cfg.templateName,
-        type:         "TEMPLATE",
-      });
-      res.json({ success: true, data: { fired: true, messageId: result.messageId } });
+      let messageId = "";
+      for (const to of phones) {
+        const result = await wa.sendMessage({
+          phone: to,
+          templateName: cfg.templateName,
+          language,
+          variables:    variables ?? (contactName ? { "1": contactName } : {}),
+        });
+        await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+        messageId = messageId || result.messageId;
+      }
+      res.json({ success: true, data: { fired: true, messageId, sentTo: phones.length } });
     } catch (err: any) {
       res.status(500).json({ success: false, error: "FIRE_FAILED", message: err.message });
     }

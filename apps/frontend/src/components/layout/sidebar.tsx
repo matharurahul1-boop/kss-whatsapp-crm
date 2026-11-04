@@ -1,8 +1,8 @@
 import { useAuth } from "@/lib/auth-context";
-import { canAccessManagerScreens, MANAGER_SCREEN_PATHS } from "@/lib/permissions";
+import { canAccessManagerScreens, canAccessUsersPage, MANAGER_SCREEN_PATHS, USERS_PATH } from "@/lib/permissions";
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, MessageCircle, FileText, Users, Send,
+  LayoutDashboard, UsersRound, MessageCircle, FileText, Users, Send,
   Wallet, Bell, Code2, ScrollText, Settings, Megaphone, Gift, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,11 +68,12 @@ const NAV_ITEMS = [
   { to: "/logs",            label: "Logs",            icon: ScrollText,      group: "system" },
   { to: "/wallet", label: "Wallet & Billing", icon: Wallet, group: "system" },
   { to: "/settings",        label: "Settings",        icon: Settings,        group: "system" },
+  { to: "/users",           label: "Users",           icon: UsersRound,      group: "system" },
 ];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
-  const visibleItems = NAV_ITEMS.filter((item) => !MANAGER_SCREEN_PATHS.includes(item.to) || canAccessManagerScreens(user?.role));
+  const visibleItems = NAV_ITEMS.filter((item) => item.to === USERS_PATH ? canAccessUsersPage(user?.role) : (!MANAGER_SCREEN_PATHS.includes(item.to) || canAccessManagerScreens(user?.role)));
   const main   = visibleItems.filter((i) => i.group === "main");
   const tools  = visibleItems.filter((i) => i.group === "tools");
   const system = visibleItems.filter((i) => i.group === "system");

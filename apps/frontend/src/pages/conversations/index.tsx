@@ -500,8 +500,8 @@ export default function ConversationsPage() {
       try {
         const publicUrl = await uploadMediaFile(attachment.file);
         mediaReplyMutation.mutate({ mediaUrl: publicUrl, mediaType: attachment.mediaType, caption: replyText.trim() || undefined, filename: attachment.file.name, replyToId });
-      } catch {
-        toast({ title: "Upload failed", description: "Could not upload the file.", variant: "destructive" });
+      } catch (e) {
+        toast({ title: "Upload failed", description: e instanceof Error && e.message ? e.message : "Could not upload the file.", variant: "destructive" });
       } finally {
         setIsUploading(false);
       }

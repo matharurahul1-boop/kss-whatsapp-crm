@@ -45,7 +45,7 @@ interface AppUser {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "MANAGER" | "AGENT";
+  role: "ADMIN" | "MANAGER" | "SALESPERSON";
 }
 
 
@@ -319,7 +319,7 @@ export default function WalletPage() {
                 >
                   <option value="ADMIN">Admin</option>
                   <option value="MANAGER">Manager</option>
-                  <option value="AGENT">Agent</option>
+                  <option value="SALESPERSON">Salesperson</option>
                 </select>
               </div>
             ))}

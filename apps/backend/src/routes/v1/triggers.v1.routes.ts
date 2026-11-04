@@ -5,6 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { getWhatsAppService } from "../../services/whatsapp";
 import { recordOutboundMessage } from "../../services/conversationService";
 import { isValidPhone, normalizePhone } from "../../utils/phone";
+import { recipientFromTemplateName, resolveRecipientPhones, RecipientKind } from "../../services/internalRecipients";
 
 const router = Router();
 
@@ -102,10 +103,20 @@ router.post(
     const variables: Record<string, string> = { "1": body.name, ...staticVars, ...(body.variables ?? {}) };
 
     try {
+      // Customer triggers go to the phone in the request; admin / manager / salesperson triggers go to those users' saved numbers.
+      const kind = recipientFromTemplateName(cfg.templateName, cfg.recipient as RecipientKind);
+      const phones = await resolveRecipientPhones(kind, phone);
+      if (!phones.length) {
+        return res.json({ success: true, data: { fired: false, reason: `No ${kind.toLowerCase()} WhatsApp numbers are configured. Add them on the Users page.` } });
+      }
       const wa = getWhatsAppService();
-      const result = await wa.sendMessage({ phone, templateName: cfg.templateName, language, variables });
-      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
-      res.json({ success: true, data: { fired: true, messageId: result.messageId, templateName: cfg.templateName, phone } });
+      const messageIds: string[] = [];
+      for (const to of phones) {
+        const result = await wa.sendMessage({ phone: to, templateName: cfg.templateName, language, variables });
+        await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+        messageIds.push(result.messageId);
+      }
+      res.json({ success: true, data: { fired: true, messageId: messageIds[0], messageIds, templateName: cfg.templateName, recipient: kind, sentTo: phones.length } });
     } catch (err: any) {
       res.status(500).json({ success: false, error: { code: "SEND_FAILED", message: err?.message ?? "Failed to send WhatsApp message." } });
     }

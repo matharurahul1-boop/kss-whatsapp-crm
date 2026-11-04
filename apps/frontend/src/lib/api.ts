@@ -53,7 +53,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body = isJson ? await res.json() : undefined;
 
   if (!res.ok) {
-    throw new ApiRequestError(res.status, body?.error ?? { code: "UNKNOWN", message: "Request failed" });
+    if (res.status === 413) throw new ApiRequestError(413, { code: "TOO_LARGE", message: "File is too large to upload. Try a file under 3 MB." });
+    throw new ApiRequestError(res.status, body?.error ?? { code: "UNKNOWN", message: `Request failed (${res.status})` });
   }
 
   return (body?.data ?? body) as T;

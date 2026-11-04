@@ -437,7 +437,7 @@ export default function SettingsPage() {
     const { toast } = useToast();
 
     const STAGE_GROUPS = [
-      { label: "Pre-sale Pipeline",       stages: ["ENQUIRY","PROSPECT","VISIT_SCHEDULED","VISITED","NEGOTIATION"] as ContactStage[] },
+      { label: "Pre-sale Pipeline",       stages: ["ENQUIRY"] as ContactStage[] },
       { label: "Sales Milestones",        stages: ["PI_CREATED","SALES_ORDER"] as ContactStage[] },
       { label: "Order Production & Delivery", stages: ["PRODUCTION","READY_DISPATCH","DISPATCHED","INSTALLATION","HANDOVER"] as ContactStage[] },
       { label: "Post-sale Service",       stages: ["SERVICE_REQUEST","TICKET_OPEN","TICKET_CLOSED"] as ContactStage[] },
@@ -455,7 +455,24 @@ export default function SettingsPage() {
       queryFn: () => api.get<{ stage: string; templateName: string; language: string; enabled: boolean; variables?: Record<string,string> }[]>("/contacts/stage-templates"),
     });
 
-    const approvedTemplates = templates?.items ?? [];
+    const ALLOWED_STAGE_TEMPLATES = new Set([
+      "enquiry_created_customer",
+      "proforma_invoice_created_customer",
+      "sales_order_booked_customer",
+      "first_service_reminder_customer",
+      "service_ticket_open_customer",
+      "service_ticket_closed_customer",
+      "order_status_production_customer",
+      "order_status_ready_for_dispatch_customer",
+      "order_status_dispatched_customer",
+      "installation_started_customer",
+      "order_handover_customer",
+      "enquiry_cancelled_or_on_hold_admin",
+      "enquiry_followup_delayed_admin",
+      "enquiry_converted_to_sales_order_admin",
+      "prebooked_sales_order_followup_sales",
+    ]);
+    const approvedTemplates = (templates?.items ?? []).filter((t) => ALLOWED_STAGE_TEMPLATES.has(t.name));
 
     const saveMutation = useMutation({
       mutationFn: ({ stage, templateName, language, enabled, variables }: { stage: string; templateName: string; language: string; enabled: boolean; variables?: Record<string,string> }) =>

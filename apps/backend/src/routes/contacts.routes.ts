@@ -9,7 +9,9 @@ import { recordAudit } from "../lib/audit";
 import { isValidPhone, normalizePhone } from "../utils/phone";
 import { ApiError } from "../middleware/errorHandler";
 import { getWhatsAppService } from "../services/whatsapp";
+import { TRIGGER_DEFS } from "./triggers.routes";
 import { recordOutboundMessage } from "../services/conversationService";
+import { recipientFromTemplateName, resolveRecipientPhones, internalVariables, ContactContext, RecipientKind } from "../services/internalRecipients";
 
 
 const router = Router();
@@ -33,24 +35,35 @@ const STAGE_TO_TRIGGER: Record<string, string> = {
   LOST:            "ENQUIRY_CANCELLED_ADMIN",
 };
 
-async function fireTriggerForStage(stage: string, phone: string, contactName: string) {
+async function fireTriggerForStage(stage: string, contact: ContactContext, customerPhone: string) {
   const event = STAGE_TO_TRIGGER[stage];
   if (!event) return;
+  await fireTriggerEvent(event, contact, customerPhone, STAGE_LABELS[stage] ?? stage);
+}
+
+/** Sends the template configured for a trigger event to its recipients. Returns how many messages went out. */
+async function fireTriggerEvent(event: string, contact: ContactContext, customerPhone: string, label: string): Promise<number> {
   try {
     const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event } });
-    if (!cfg?.enabled || !cfg.templateName) return;
+    if (!cfg?.enabled || !cfg.templateName) return 0;
     // Use Meta-registered language from WhatsAppTemplate, fall back to config language
     const tpl = await prisma.whatsAppTemplate.findUnique({ where: { name: cfg.templateName }, select: { language: true } });
     const language = tpl?.language || cfg.language || "en_US";
     const staticVars: Record<string, string> = cfg.variables && typeof cfg.variables === "object" ? cfg.variables as Record<string, string> : {};
-    const variables = { "1": contactName, ...staticVars };
-    console.log(`[trigger] firing ${event} → template=${cfg.templateName} lang=${language} phone=${phone}`);
+    const kind = recipientFromTemplateName(cfg.templateName, cfg.recipient as RecipientKind);
+    const variables = { ...internalVariables(cfg.templateName, contact, label), ...staticVars };
+    const phones = await resolveRecipientPhones(kind, customerPhone);
+    if (!phones.length) console.warn(`[trigger] ${event}: no ${kind} phone numbers configured - nothing sent`);
     const wa = getWhatsAppService();
-    const result = await wa.sendMessage({ phone, templateName: cfg.templateName, language, variables });
-    console.log(`[trigger] ${event} result:`, result);
-    await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+    for (const phone of phones) {
+      console.log(`[trigger] firing ${event} -> template=${cfg.templateName} lang=${language} to=${kind} phone=${phone}`);
+      const result = await wa.sendMessage({ phone, templateName: cfg.templateName, language, variables });
+      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+    }
+    return phones.length;
   } catch (err) {
-    console.error(`[contacts] Trigger "${event}" failed for ${phone}:`, err);
+    console.error(`[contacts] Trigger "${event}" failed for ${contact.name}:`, err);
+    return 0;
   }
 }
 
@@ -74,28 +87,22 @@ const STAGE_LABELS: Record<string, string> = {
   LOST:            "Lost",
 };
 
-async function sendTemplateToContact(phone: string, contactName: string, templateName: string, _configLanguage = "en_US") {
+async function sendTemplateToContact(customerPhone: string, contact: ContactContext, templateName: string, _configLanguage = "en_US") {
   try {
     // Always use the language Meta registered the template with
     const tpl = await prisma.whatsAppTemplate.findUnique({ where: { name: templateName }, select: { language: true } });
     const language = tpl?.language || _configLanguage;
+    const kind = recipientFromTemplateName(templateName);
+    const phones = await resolveRecipientPhones(kind, customerPhone);
+    if (!phones.length) console.warn(`[contacts] "${templateName}" is a ${kind} template but no ${kind} phone numbers are configured - nothing sent`);
+    const variables = internalVariables(templateName, contact, STAGE_LABELS[contact.stage ?? ""] ?? contact.stage ?? "");
     const wa = getWhatsAppService();
-    const result = await wa.sendMessage({
-      phone,
-      templateName,
-      language,
-      variables: { "1": contactName },
-    });
-    await recordOutboundMessage({
-      phone,
-      waMessageId: result.messageId,
-      body: null,
-      templateName,
-      type: "TEMPLATE",
-    });
-    return result;
+    for (const phone of phones) {
+      const result = await wa.sendMessage({ phone, templateName, language, variables });
+      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName, type: "TEMPLATE" });
+    }
   } catch (err) {
-    console.error(`[contacts] Failed to send template "${templateName}" to ${phone}:`, err);
+    console.error(`[contacts] Failed to send template "${templateName}":`, err);
   }
 }
 
@@ -190,10 +197,11 @@ router.post(
     await recordAudit({ userId: req.user?.userId, action: "CONTACT_CREATED", description: `Contact "${contact.name}" created` });
 
     // Fire ENQUIRY_CREATED trigger + send onboarding stage template
-    void fireTriggerForStage("ENQUIRY", phone, contact.name);
+    const ctx = { id: contact.id, name: contact.name, stage: "ENQUIRY", notes: contact.notes };
+    void fireTriggerForStage("ENQUIRY", ctx, phone);
     const onboarding = await (prisma as any).stageTemplate.findUnique({ where: { stage: "ENQUIRY" } });
     if (onboarding?.enabled && onboarding.templateName) {
-      void sendTemplateToContact(phone, contact.name, onboarding.templateName, onboarding.language);
+      void sendTemplateToContact(phone, ctx, onboarding.templateName, onboarding.language);
     }
 
     res.status(201).json({ success: true, data: contact });
@@ -233,10 +241,11 @@ router.put(
 
     // Stage changed → fire trigger + send stage template
     if (input.stage && input.stage !== existing.stage) {
-      void fireTriggerForStage(input.stage, phone, updated.name);
+      const ctx = { id: updated.id, name: updated.name, stage: input.stage, notes: updated.notes };
+      void fireTriggerForStage(input.stage, ctx, phone);
       const stageTpl = await (prisma as any).stageTemplate.findUnique({ where: { stage: input.stage } });
       if (stageTpl?.enabled && stageTpl.templateName) {
-        void sendTemplateToContact(phone, updated.name, stageTpl.templateName, stageTpl.language);
+        void sendTemplateToContact(phone, ctx, stageTpl.templateName, stageTpl.language);
       }
       await recordAudit({
         userId: req.user?.userId,
@@ -331,6 +340,28 @@ router.post("/bulk-stage/preview", asyncHandler(async (req, res) => {
 router.post("/bulk-stage", asyncHandler(async (req: AuthenticatedRequest, res) => {
   const extraVariables = req.body.extraVariables as Record<string, string> | undefined;
   res.json({ success: true, data: await applyBulkStage(bulkStageSchema.parse(req.body), req.user!.userId, extraVariables) });
+}));
+
+// Notification headings for the bulk dropdown. `stage` is set when the notification also moves contacts to a stage.
+router.get("/notification-options", asyncHandler(async (_req, res) => {
+  const stageFor: Record<string, string> = {};
+  for (const [stage, event] of Object.entries(STAGE_TO_TRIGGER)) if (!stageFor[event]) stageFor[event] = stage;
+  res.json({ success: true, data: TRIGGER_DEFS.map((d) => ({ event: d.event, label: d.label, recipient: d.recipient, stage: stageFor[d.event] ?? null })) });
+}));
+
+// Send a notification to the selected contacts without changing their stage.
+router.post("/bulk-notify", asyncHandler(async (req, res) => {
+  const { ids, event } = z.object({ ids: z.array(z.string().min(1)).min(1).max(200), event: z.string() }).parse(req.body);
+  if (!TRIGGER_DEFS.some((d) => d.event === event)) throw new ApiError(400, "INVALID_EVENT", "Unknown notification");
+  const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event } });
+  if (!cfg?.enabled || !cfg.templateName) throw new ApiError(400, "TRIGGER_NOT_CONFIGURED", "This notification has no enabled template. Set one in Settings > Triggers.");
+  const contacts = await prisma.contact.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, phone: true, stage: true, notes: true } });
+  let sent = 0, skipped = 0;
+  for (const c of contacts) {
+    const n = await fireTriggerEvent(event, { id: c.id, name: c.name, stage: c.stage, notes: c.notes }, normalizePhone(c.phone), STAGE_LABELS[c.stage] ?? c.stage);
+    if (n > 0) sent += n; else skipped++;
+  }
+  res.json({ success: true, data: { contacts: contacts.length, sent, skipped, templateName: cfg.templateName } });
 }));
 
 // Stage templates config routes

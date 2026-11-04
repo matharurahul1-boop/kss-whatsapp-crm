@@ -30,7 +30,7 @@ describe("manager billing alerts and reports", () => {
  it.each([-1, 0.001, 10000001])("rejects invalid threshold %s", async (threshold) => {
   expect((await request(app).put("/billing/alerts/settings").send({ threshold })).status).toBe(400); expect(db.wallet.update).not.toHaveBeenCalled();
  });
- it.each(["ADMIN", "AGENT"])("denies %s settings and report exports", async (role) => {
+ it.each(["ADMIN", "SALESPERSON"])("denies %s settings and report exports", async (role) => {
   db.user.findUnique.mockResolvedValue({ role });
   for (const path of ["/reports", "/reports/export?format=pdf"]) expect((await request(app).get("/billing" + path)).status).toBe(403);
   expect((await request(app).put("/billing/alerts/settings").send({ threshold: 250 })).status).toBe(403);
@@ -43,8 +43,8 @@ describe("manager billing alerts and reports", () => {
   expect(summary.body.data).toMatchObject({ totalTopUps: 2000, grossUsage: 2000.01, totalRefunds: 100, totalUsed: 1900.01, balance: 99.99 });
   expect(db.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "RepeatableRead" });
  });
- it("denies Agent wallet alerts and navbar totals", async () => {
-  db.user.findUnique.mockResolvedValue({ role: "AGENT" });
+ it("denies Salesperson wallet alerts and navbar totals", async () => {
+  db.user.findUnique.mockResolvedValue({ role: "SALESPERSON" });
   expect((await request(app).get("/billing/alerts")).status).toBe(403);
   expect((await request(app).get("/billing/summary")).status).toBe(403);
  });

@@ -21,7 +21,7 @@ describe("category pricing", () => {
   expect(db.auditLog.create.mock.calls[0][0].data.action).toBe("CATEGORY_RATES_UPDATED");
  });
  it("blocks agents from editing rates", async () => {
-  db.user.findUnique.mockResolvedValue({ role: "AGENT" });
+  db.user.findUnique.mockResolvedValue({ role: "SALESPERSON" });
   expect((await request(app).put("/wallet/rates").send([{ category: "UTILITY", rateInr: 0.3 }])).status).toBe(403);
   expect(db.messageRate.upsert).not.toHaveBeenCalled();
  });

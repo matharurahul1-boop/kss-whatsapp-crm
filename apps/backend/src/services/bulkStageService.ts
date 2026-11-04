@@ -9,6 +9,7 @@ import { getWhatsAppService } from "./whatsapp";
 import { recordOutboundMessage } from "./conversationService";
 import { scheduleMockDeliveryProgression } from "./messageSimulator";
 import { env } from "../config/env";
+import { recipientFromTemplateName, resolveRecipientPhones, internalVariables } from "./internalRecipients";
 
 export const bulkStageSchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(200).transform((ids) => [...new Set(ids)]),
@@ -35,6 +36,10 @@ async function prepare(input: BulkStageInput) {
 
   console.log(`[bulkStage] automation=${automation} template=`, template ? { name: template.name, status: template.status } : "null");
 
+  // Admin / manager / salesperson templates go to those users' numbers, never to the customer.
+  const internalKind = automation && config ? recipientFromTemplateName(config.templateName) : "CUSTOMER";
+  const internal = internalKind !== "CUSTOMER";
+
   const valid = changed.filter((contact) => isValidPhone(normalizePhone(contact.phone)));
 
   console.log(`[bulkStage] changed=${changed.length} validPhones=${valid.length} invalidPhones=${changed.length - valid.length}`);
@@ -42,7 +47,7 @@ async function prepare(input: BulkStageInput) {
     changed.filter((c) => !isValidPhone(normalizePhone(c.phone))).forEach((c) => console.log(`[bulkStage] invalid phone: "${c.phone}" → normalised="${normalizePhone(c.phone)}"`));
   }
 
-  const cost = automation && template?.status === "APPROVED" && valid.length > 0 ? await estimateCampaignCost(template.category, valid.length) : null;
+  const cost = automation && !internal && template?.status === "APPROVED" && valid.length > 0 ? await estimateCampaignCost(template.category, valid.length) : null;
 
   // Which variable numbers (2, 3, ...) are needed by the template but NOT in config.variables?
   const configuredNums = new Set(Object.keys(config?.variables ?? {}).map(Number));
@@ -70,7 +75,7 @@ async function prepare(input: BulkStageInput) {
     : cost && !cost.canSend ? "Insufficient wallet balance. Top up ₹" + cost.shortfall + " before updating and sending."
     : null;
 
-  return { contacts, changed, config, template, automation, valid, cost, problem, skipReason, missingVars };
+  return { contacts, changed, config, template, automation, valid, cost, problem, skipReason, missingVars, internal, internalKind };
 }
 
 export async function previewBulkStage(input: BulkStageInput) {
@@ -78,7 +83,7 @@ export async function previewBulkStage(input: BulkStageInput) {
   return {
     selected: plan.contacts.length, changed: plan.changed.length, unchanged: plan.contacts.length - plan.changed.length,
     invalidPhones: plan.changed.length - plan.valid.length,
-    messagesToSend: plan.automation ? plan.valid.length : 0,
+    messagesToSend: plan.automation && !plan.internal ? plan.valid.length : 0,
     templateName: plan.automation ? plan.config!.templateName : null,
     automationEnabled: plan.automation, cost: plan.cost,
     canApply: plan.problem == null, problem: plan.problem,
@@ -98,7 +103,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string, extr
       WHERE "id" IN (${Prisma.join(plan.changed.map((contact) => contact.id))}) AND "stage" <> ${input.stage}::"ContactStage"
       RETURNING "id", "name", "phone", "stage"
     `);
-    const sends = plan.automation && plan.template?.status === "APPROVED"
+    const sends = plan.automation && !plan.internal && plan.template?.status === "APPROVED"
       ? changed.filter((contact) => isValidPhone(normalizePhone(contact.phone))).map((contact) => ({ contact, notificationId: randomUUID() }))
       : [];
     if (sends.length) await tx.notification.createMany({ data: sends.map(({ contact, notificationId }) => ({
@@ -110,6 +115,24 @@ export async function applyBulkStage(input: BulkStageInput, userId: string, extr
     } });
     return { changed, sends };
   }, { timeout: 15000 });
+
+  // Internal templates: notify the admin/manager/salesperson numbers instead of the customer.
+  if (plan.internal && plan.template?.status === "APPROVED") {
+    const wa = getWhatsAppService();
+    for (const contact of claimed.changed) {
+      try {
+        const phones = await resolveRecipientPhones(plan.internalKind, normalizePhone(contact.phone));
+        if (!phones.length) console.warn(`[bulkStage] no ${plan.internalKind} phone numbers configured - nothing sent`);
+        const vars = { ...internalVariables(plan.template.name, { id: contact.id, name: contact.name }, input.stage), ...(plan.config!.variables ?? {}), ...(extraVariables ?? {}) };
+        for (const phone of phones) {
+          const r = await wa.sendMessage({ phone, templateName: plan.template.name, language: plan.template.language || plan.config!.language, variables: vars });
+          await recordOutboundMessage({ phone, waMessageId: r.messageId, body: plan.template.body, templateName: plan.template.name, type: "TEMPLATE" });
+        }
+      } catch (err) {
+        console.error("[bulkStage] internal notification failed for", contact.id, err);
+      }
+    }
+  }
 
   const service = claimed.sends.length ? getWhatsAppService() : null;
   const results: { contactId: string; name: string; status: "SENT" | "FAILED"; reason?: string }[] = [];
