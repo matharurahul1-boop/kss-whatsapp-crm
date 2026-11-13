@@ -7,6 +7,9 @@ export function isValidPhone(phone: string): boolean {
   return PHONE_REGEX.test(normalized);
 }
 
+const DEFAULT_COUNTRY_CODE = "91"; // India: a bare 10-digit number gets this prefix
+
 export function normalizePhone(phone: string): string {
-  return phone.replace(/[^0-9]/g, "").replace(/^0+/, "");
+  const digits = phone.replace(/[^0-9]/g, "").replace(/^0+/, "");
+  return digits.length === 10 ? DEFAULT_COUNTRY_CODE + digits : digits;
 }

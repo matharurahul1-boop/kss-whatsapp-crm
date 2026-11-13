@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
+import { requireAdmin } from "../middleware/requireAdmin";
 import { requireAdminOrManager } from "../middleware/requireAdminOrManager";
 import { ApiError } from "../middleware/errorHandler";
 import { isValidPhone, normalizePhone } from "../utils/phone";
@@ -25,16 +26,35 @@ router.get(
   })
 );
 
-// PUT /api/users/:id/phone — WhatsApp number that receives this user's internal notifications ("" clears it)
+// PUT /api/users/:id — admins edit a user's name, role and WhatsApp number ("" clears the number)
 router.put(
-  "/:id/phone",
-  asyncHandler(async (req, res) => {
-    const { phone } = z.object({ phone: z.string().max(30) }).parse(req.body);
-    const normalized = normalizePhone(phone);
-    if (normalized && !isValidPhone(normalized)) throw new ApiError(400, "INVALID_PHONE", "Enter the number with country code, e.g. 919876543210");
-    const exists = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
-    if (!exists) throw new ApiError(404, "NOT_FOUND", "User not found");
-    const user = await prisma.user.update({ where: { id: req.params.id }, data: { phone: normalized || null }, select: { id: true, phone: true } });
+  "/:id",
+  requireAdmin,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const input = z.object({
+      name: z.string().trim().min(1).max(100).optional(),
+      role: z.enum(["ADMIN", "MANAGER", "SALESPERSON"]).optional(),
+      phone: z.string().max(30).optional(),
+    }).parse(req.body);
+
+    const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, role: true } });
+    if (!target) throw new ApiError(404, "NOT_FOUND", "User not found");
+    if (input.role && input.role !== target.role && target.id === req.user!.userId) {
+      throw new ApiError(400, "CANNOT_CHANGE_OWN_ROLE", "You cannot change your own role. Ask another admin.");
+    }
+
+    let phone: string | null | undefined;
+    if (input.phone !== undefined) {
+      const normalized = normalizePhone(input.phone);
+      if (normalized && !isValidPhone(normalized)) throw new ApiError(400, "INVALID_PHONE", "Enter the number with country code, e.g. 919876543210");
+      phone = normalized || null;
+    }
+
+    const user = await prisma.user.update({
+      where: { id: target.id },
+      data: { ...(input.name ? { name: input.name } : {}), ...(input.role ? { role: input.role } : {}), ...(phone !== undefined ? { phone } : {}) },
+      select: { id: true, name: true, email: true, role: true, phone: true },
+    });
     res.json({ success: true, data: user });
   })
 );

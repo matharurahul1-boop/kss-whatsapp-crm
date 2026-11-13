@@ -1,4 +1,5 @@
 import { env } from "../../config/env";
+import { normalizePhone } from "../../utils/phone";
 import { ConnectAccountResult, MetaTemplate, SendMessageResult, TemplateSyncResult, WhatsAppService } from "./WhatsAppService";
 
 const GRAPH_BASE = "https://graph.facebook.com/v20.0";
@@ -103,7 +104,7 @@ export class MetaWhatsAppService implements WhatsAppService {
       headers: { Authorization: `Bearer ${env.accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        to: input.phone,
+        to: normalizePhone(input.phone),
         type: "template",
         template: {
           name: input.templateName,

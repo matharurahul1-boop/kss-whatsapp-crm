@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/utils";
 import { UserRole } from "@/lib/types";
 
@@ -29,25 +30,51 @@ const ROLE_STYLE: Record<UserRole, { label: string; cls: string }> = {
   SALESPERSON: { label: "Salesperson", cls: "bg-green-100 text-green-700" },
 };
 
-function PhoneCell({ user }: { user: UserRow }) {
+function EditableCells({ user, canEdit }: { user: UserRow; canEdit: boolean }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [value, setValue] = useState(user.phone ?? "");
-  const dirty = value.trim() !== (user.phone ?? "");
+  const [name, setName] = useState(user.name);
+  const [role, setRole] = useState<UserRole>(user.role);
+  const [phone, setPhone] = useState(user.phone ?? "");
+  const dirty = name.trim() !== user.name || role !== user.role || phone.trim() !== (user.phone ?? "");
   const save = useMutation({
-    mutationFn: () => api.put(`/users/${user.id}/phone`, { phone: value.trim() }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); toast({ title: "WhatsApp number saved", variant: "success" }); },
-    onError: (e: any) => toast({ title: e?.message ?? "Could not save number", variant: "destructive" }),
+    mutationFn: () => api.put(`/users/${user.id}`, { name: name.trim(), role, phone: phone.trim() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); toast({ title: "User updated", variant: "success" }); },
+    onError: (e: any) => { setRole(user.role); toast({ title: e?.message ?? "Could not update user", variant: "destructive" }); },
   });
+
+  if (!canEdit) {
+    return (
+      <>
+        <TableCell className="font-medium">{user.name}</TableCell>
+        <TableCell>{user.email}</TableCell>
+        <TableCell><span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_STYLE[user.role].cls}`}>{ROLE_STYLE[user.role].label}</span></TableCell>
+        <TableCell>{user.phone ?? "—"}</TableCell>
+      </>
+    );
+  }
   return (
-    <div className="flex items-center gap-2">
-      <Input className="h-8 w-44" placeholder="919876543210" value={value} onChange={(e) => setValue(e.target.value)} />
-      {dirty && <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Save</Button>}
-    </div>
+    <>
+      <TableCell><Input className="h-8 w-40" value={name} onChange={(e) => setName(e.target.value)} /></TableCell>
+      <TableCell>{user.email}</TableCell>
+      <TableCell>
+        <select className="rounded-lg border border-border bg-background px-2 py-1 text-sm" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+          {(Object.keys(ROLE_STYLE) as UserRole[]).map((r) => <option key={r} value={r}>{ROLE_STYLE[r].label}</option>)}
+        </select>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Input className="h-8 w-40" placeholder="919876543210" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          {dirty && <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !name.trim()}>Save</Button>}
+        </div>
+      </TableCell>
+    </>
   );
 }
 
 export default function UsersPage() {
+  const { user: me } = useAuth();
+  const isAdmin = me?.role === "ADMIN";
   const [search, setSearch] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["users"],
@@ -59,7 +86,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Users" description="All users. The WhatsApp number is where their role's internal notifications are sent (admin, manager or salesperson alerts)." />
+      <PageHeader title="Users" description={isAdmin ? "Edit names, roles and WhatsApp numbers. The number receives that role's internal notifications." : "All users. Only admins can edit them."} />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -86,12 +113,7 @@ export default function UsersPage() {
             <TableBody>
               {users.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_STYLE[u.role].cls}`}>{ROLE_STYLE[u.role].label}</span>
-                  </TableCell>
-                  <TableCell><PhoneCell user={u} /></TableCell>
+                  <EditableCells user={u} canEdit={isAdmin} />
                   <TableCell>{u.pushEnabled ? "On" : "Off"}</TableCell>
                   <TableCell>{formatDate(u.createdAt)}</TableCell>
                 </TableRow>
