@@ -319,7 +319,7 @@ export default function WalletPage() {
                 >
                   <option value="ADMIN">Admin</option>
                   <option value="MANAGER">Manager</option>
-                  <option value="SALESPERSON">Salesperson</option>
+                  <option value="SALESPERSON">Sales Manager</option>
                 </select>
               </div>
             ))}

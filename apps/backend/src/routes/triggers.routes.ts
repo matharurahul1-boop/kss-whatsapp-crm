@@ -129,6 +129,7 @@ router.post(
           language,
           variables:    vars,
         });
+        if (result.status === "failed" || !result.messageId) throw new Error(result.failReason ?? "WhatsApp rejected the message");
         await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, variables: vars, type: "TEMPLATE" });
         messageId = messageId || result.messageId;
       }

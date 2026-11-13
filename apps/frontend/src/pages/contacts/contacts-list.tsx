@@ -38,7 +38,7 @@ interface BulkStageResult {
 
 const ALL_STAGES = Object.keys(STAGE_LABELS) as ContactStage[];
 interface NotificationOption { event: string; label: string; recipient: "CUSTOMER" | "ADMIN" | "SALESPERSON"; stage: ContactStage | null }
-const RECIPIENT_LABEL: Record<string, string> = { CUSTOMER: "customer", ADMIN: "admins", SALESPERSON: "salespeople" };
+const RECIPIENT_LABEL: Record<string, string> = { CUSTOMER: "customer", ADMIN: "admins", SALESPERSON: "sales managers" };
 
 export default function ContactsPage() {
   const queryClient = useQueryClient();

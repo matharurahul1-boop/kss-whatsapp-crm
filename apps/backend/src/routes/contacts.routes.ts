@@ -55,12 +55,15 @@ async function fireTriggerEvent(event: string, contact: ContactContext, customer
     const phones = await resolveRecipientPhones(kind, customerPhone);
     if (!phones.length) console.warn(`[trigger] ${event}: no ${kind} phone numbers configured - nothing sent`);
     const wa = getWhatsAppService();
+    let sent = 0;
     for (const phone of phones) {
       console.log(`[trigger] firing ${event} -> template=${cfg.templateName} lang=${language} to=${kind} phone=${phone}`);
       const result = await wa.sendMessage({ phone, templateName: cfg.templateName, language, variables });
+      if (result.status === "failed" || !result.messageId) { console.error(`[trigger] ${event} to ${phone} failed: ${result.failReason}`); continue; }
       await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, variables, type: "TEMPLATE" });
+      sent++;
     }
-    return phones.length;
+    return sent;
   } catch (err) {
     console.error(`[contacts] Trigger "${event}" failed for ${contact.name}:`, err);
     return 0;
@@ -99,6 +102,7 @@ async function sendTemplateToContact(customerPhone: string, contact: ContactCont
     const wa = getWhatsAppService();
     for (const phone of phones) {
       const result = await wa.sendMessage({ phone, templateName, language, variables });
+      if (result.status === "failed" || !result.messageId) { console.error(`[contacts] "${templateName}" to ${phone} failed: ${result.failReason}`); continue; }
       await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName, variables, type: "TEMPLATE" });
     }
   } catch (err) {

@@ -27,7 +27,7 @@ interface UserRow {
 const ROLE_STYLE: Record<UserRole, { label: string; cls: string }> = {
   ADMIN:       { label: "Admin",       cls: "bg-purple-100 text-purple-700" },
   MANAGER:     { label: "Manager",     cls: "bg-blue-100 text-blue-700" },
-  SALESPERSON: { label: "Salesperson", cls: "bg-green-100 text-green-700" },
+  SALESPERSON: { label: "Sales Manager", cls: "bg-green-100 text-green-700" },
 };
 
 function EditableCells({ user, canEdit }: { user: UserRow; canEdit: boolean }) {

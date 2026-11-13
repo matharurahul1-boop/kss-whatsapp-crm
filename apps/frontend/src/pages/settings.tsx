@@ -262,7 +262,7 @@ export default function SettingsPage() {
     const GROUPS = [
       { key: "CUSTOMER",   label: "Customer Notifications",  icon: User,      color: "text-blue-600"  },
       { key: "ADMIN",      label: "Admin Alerts",            icon: Building2, color: "text-amber-600" },
-      { key: "SALESPERSON",label: "Salesperson Reminders",   icon: Bell,      color: "text-violet-600"},
+      { key: "SALESPERSON",label: "Sales Manager Reminders",   icon: Bell,      color: "text-violet-600"},
     ] as const;
 
     function TriggerRow({ row }: { row: TriggerRow }) {

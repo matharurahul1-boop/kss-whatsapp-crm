@@ -4,6 +4,12 @@ import { ConnectAccountResult, MetaTemplate, SendMessageResult, TemplateSyncResu
 
 const GRAPH_BASE = "https://graph.facebook.com/v20.0";
 
+// WhatsApp rejects empty parameters, newlines/tabs, and runs of 4+ spaces inside template parameters.
+function cleanParam(value: unknown): string {
+  const text = String(value ?? "").replace(/[\r\n\t]+/g, " ").replace(/ {4,}/g, "   ").trim();
+  return text || "-";
+}
+
 // Real Meta Cloud API integration. Requires valid credentials in env vars.
 export class MetaWhatsAppService implements WhatsAppService {
   readonly mode = "live" as const;
@@ -112,7 +118,7 @@ export class MetaWhatsAppService implements WhatsAppService {
           components: [
             {
               type: "body",
-              parameters: Object.values(input.variables).map((value) => ({ type: "text", text: value })),
+              parameters: Object.values(input.variables).map((value) => ({ type: "text", text: cleanParam(value) })),
             },
           ],
         },
