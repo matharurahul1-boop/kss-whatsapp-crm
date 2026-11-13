@@ -160,6 +160,7 @@ async function runCampaign(campaignId: string): Promise<void> {
             waMessageId: result.messageId,
             body: campaign.template.body,
             templateName: campaign.template.name,
+            variables,
             type: "TEMPLATE",
           });
         }

@@ -126,6 +126,7 @@ router.post(
         waMessageId: result.messageId,
         body: template.body,
         templateName: template.name,
+        variables: input.variables as Record<string, string>,
         type: "TEMPLATE",
       });
     }

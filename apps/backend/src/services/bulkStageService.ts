@@ -126,7 +126,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string, extr
         const vars = { ...internalVariables(plan.template.name, { id: contact.id, name: contact.name }, input.stage), ...(plan.config!.variables ?? {}), ...(extraVariables ?? {}) };
         for (const phone of phones) {
           const r = await wa.sendMessage({ phone, templateName: plan.template.name, language: plan.template.language || plan.config!.language, variables: vars });
-          await recordOutboundMessage({ phone, waMessageId: r.messageId, body: plan.template.body, templateName: plan.template.name, type: "TEMPLATE" });
+          await recordOutboundMessage({ phone, waMessageId: r.messageId, body: plan.template.body, templateName: plan.template.name, variables: vars, type: "TEMPLATE" });
         }
       } catch (err) {
         console.error("[bulkStage] internal notification failed for", contact.id, err);
@@ -162,7 +162,7 @@ export async function applyBulkStage(input: BulkStageInput, userId: string, extr
         sentAt: sent ? new Date() : undefined, failedAt: sent ? undefined : new Date(), failReason: result.failReason,
       } });
       if (sent) {
-        try { await recordOutboundMessage({ phone: normalizePhone(contact.phone), waMessageId: result.messageId, body: plan.template!.body, templateName: plan.template!.name, type: "TEMPLATE" }); }
+        try { await recordOutboundMessage({ phone: normalizePhone(contact.phone), waMessageId: result.messageId, body: plan.template!.body, templateName: plan.template!.name, variables: vars, type: "TEMPLATE" }); }
         catch { console.error("[bulkStage] Could not record conversation for", notificationId); }
         if (env.metaMode === "mock") scheduleMockDeliveryProgression(result.messageId);
       }

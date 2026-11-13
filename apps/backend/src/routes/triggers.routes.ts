@@ -121,14 +121,15 @@ router.post(
       }
       const wa = getWhatsAppService();
       let messageId = "";
+      const vars = variables ?? (contactName ? { "1": contactName } : {});
       for (const to of phones) {
         const result = await wa.sendMessage({
           phone: to,
           templateName: cfg.templateName,
           language,
-          variables:    variables ?? (contactName ? { "1": contactName } : {}),
+          variables:    vars,
         });
-        await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+        await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, variables: vars, type: "TEMPLATE" });
         messageId = messageId || result.messageId;
       }
       res.json({ success: true, data: { fired: true, messageId, sentTo: phones.length } });

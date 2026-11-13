@@ -58,7 +58,7 @@ async function fireTriggerEvent(event: string, contact: ContactContext, customer
     for (const phone of phones) {
       console.log(`[trigger] firing ${event} -> template=${cfg.templateName} lang=${language} to=${kind} phone=${phone}`);
       const result = await wa.sendMessage({ phone, templateName: cfg.templateName, language, variables });
-      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName: cfg.templateName, variables, type: "TEMPLATE" });
     }
     return phones.length;
   } catch (err) {
@@ -99,7 +99,7 @@ async function sendTemplateToContact(customerPhone: string, contact: ContactCont
     const wa = getWhatsAppService();
     for (const phone of phones) {
       const result = await wa.sendMessage({ phone, templateName, language, variables });
-      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName, type: "TEMPLATE" });
+      await recordOutboundMessage({ phone, waMessageId: result.messageId, body: null, templateName, variables, type: "TEMPLATE" });
     }
   } catch (err) {
     console.error(`[contacts] Failed to send template "${templateName}":`, err);

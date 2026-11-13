@@ -113,7 +113,7 @@ router.post(
       const messageIds: string[] = [];
       for (const to of phones) {
         const result = await wa.sendMessage({ phone: to, templateName: cfg.templateName, language, variables });
-        await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, type: "TEMPLATE" });
+        await recordOutboundMessage({ phone: to, waMessageId: result.messageId, body: null, templateName: cfg.templateName, variables, type: "TEMPLATE" });
         messageIds.push(result.messageId);
       }
       res.json({ success: true, data: { fired: true, messageId: messageIds[0], messageIds, templateName: cfg.templateName, recipient: kind, sentTo: phones.length } });
