@@ -1,0 +1,697 @@
+{
+  "info": {
+    "name": "KSS WhatsApp CRM - Triggers",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://kss-whatsapp-crm.vercel.app"
+    },
+    {
+      "key": "apiKey",
+      "value": "PASTE_YOUR_NEW_API_KEY_HERE"
+    }
+  ],
+  "item": [
+    {
+      "name": "List all triggers (slugs + status)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Enquiry Created  [enquiry-created]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/enquiry-created",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "enquiry-created"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"product\": \"Modular Kitchen\",\n  \"contact1\": \"Amit: 9876500001\",\n  \"contact2\": \"Riya: 9876500002\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PI (Proforma Invoice) Created  [pi-created]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/pi-created",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "pi-created"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"project\": \"PI-1024\",\n  \"contact1\": \"Amit: 9876500001\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Sales Order Initiated  [sales-order]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/sales-order",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "sales-order"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"SO-1024\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Service Request Reminder  [service-request]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/service-request",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "service-request"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"SO-1024\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ticket Opened  [ticket-open]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/ticket-open",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "ticket-open"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"concern\": \"Door alignment issue\",\n  \"ticket\": \"TKT-501\",\n  \"contact1\": \"Amit: 9876500001\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ticket Closed  [ticket-closed]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/ticket-closed",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "ticket-closed"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"TKT-501\",\n    \"3\": \"support@kssinteriors.com\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Order Status - Production  [order-production]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/order-production",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "order-production"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"SO-1024\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Order Status - Ready for Dispatch  [order-ready-dispatch]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/order-ready-dispatch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "order-ready-dispatch"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"SO-1024\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Order Status - Dispatched  [order-dispatched]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/order-dispatched",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "order-dispatched"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"order\": \"SO-1024\",\n  \"dispatchDate\": \"12 Nov 2026\",\n  \"contact1\": \"Amit: 9876500001\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Order Status - Installation Started  [order-installation]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/order-installation",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "order-installation"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"SO-1024\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Order Status - Handover  [order-handover]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/order-handover",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "order-handover"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"variables\": {\n    \"2\": \"SO-1024\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Enquiry Cancelled / On Hold (admins)  [enquiry-cancelled]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/enquiry-cancelled",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "enquiry-cancelled"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"adminPhones\": [\n    \"919876543210\"\n  ],\n  \"variables\": {\n    \"1\": \"On Hold\",\n    \"2\": \"ENQ-1001\",\n    \"3\": \"Rahul Sharma\",\n    \"4\": \"Modular Kitchen\",\n    \"5\": \"Customer postponed\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Delay Enquiry Alert (admins)  [delay-enquiry]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/delay-enquiry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "delay-enquiry"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"adminPhones\": [\n    \"919876543210\"\n  ],\n  \"variables\": {\n    \"1\": \"ENQ-1001\",\n    \"2\": \"Rahul Sharma\",\n    \"3\": \"5\",\n    \"4\": \"Site visit scheduled\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Enquiry Converted to Sales Order (admins)  [enquiry-converted]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/enquiry-converted",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "enquiry-converted"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"adminPhones\": [\n    \"919876543210\"\n  ],\n  \"variables\": {\n    \"1\": \"ENQ-1001\",\n    \"2\": \"SO-1024\",\n    \"3\": \"Rahul Sharma\",\n    \"4\": \"Amit\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Pre-booked Follow-up Reminder (sales managers)  [prebooked-followup]",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/prebooked-followup",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "prebooked-followup"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"salesManagerPhones\": [\n    \"919876543210\"\n  ],\n  \"variables\": {\n    \"1\": \"SO-1024\",\n    \"2\": \"Kitchen Project\",\n    \"3\": \"Rahul Sharma\",\n    \"4\": \"2026-11-01\",\n    \"5\": \"Call to confirm design\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "TEST MODE - Enquiry Cancelled / On Hold (admins)  [enquiry-cancelled] only to the phone below",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/enquiry-cancelled?test=true",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "enquiry-cancelled"
+          ],
+          "query": [
+            {
+              "key": "test",
+              "value": "true"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"variables\": {\n    \"1\": \"On Hold\",\n    \"2\": \"ENQ-1001\",\n    \"3\": \"Rahul Sharma\",\n    \"4\": \"Modular Kitchen\",\n    \"5\": \"Customer postponed\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "TEST MODE - Delay Enquiry Alert (admins)  [delay-enquiry] only to the phone below",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/delay-enquiry?test=true",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "delay-enquiry"
+          ],
+          "query": [
+            {
+              "key": "test",
+              "value": "true"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"variables\": {\n    \"1\": \"ENQ-1001\",\n    \"2\": \"Rahul Sharma\",\n    \"3\": \"5\",\n    \"4\": \"Site visit scheduled\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "TEST MODE - Enquiry Converted to Sales Order (admins)  [enquiry-converted] only to the phone below",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/enquiry-converted?test=true",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "enquiry-converted"
+          ],
+          "query": [
+            {
+              "key": "test",
+              "value": "true"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"variables\": {\n    \"1\": \"ENQ-1001\",\n    \"2\": \"SO-1024\",\n    \"3\": \"Rahul Sharma\",\n    \"4\": \"Amit\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "TEST MODE - Pre-booked Follow-up Reminder (sales managers)  [prebooked-followup] only to the phone below",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/prebooked-followup?test=true",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "prebooked-followup"
+          ],
+          "query": [
+            {
+              "key": "test",
+              "value": "true"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"variables\": {\n    \"1\": \"SO-1024\",\n    \"2\": \"Kitchen Project\",\n    \"3\": \"Rahul Sharma\",\n    \"4\": \"2026-11-01\",\n    \"5\": \"Call to confirm design\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
