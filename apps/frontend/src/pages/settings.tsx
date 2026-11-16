@@ -256,8 +256,8 @@ export default function SettingsPage() {
           <div>
             <p className="font-semibold">Team contact numbers</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              These appear as the "contact our team" lines in customer notifications (Enquiry Created uses all five; PI Created, Ticket Opened and
-              Order Dispatched use the first one). They are sent as <span className="font-mono">Name: Number</span>. Anything sent in an API request overrides them.
+              These appear as the "contact our team" lines in customer notifications (Enquiry Created shows them one per line; PI Created, Ticket Opened and
+              Order Dispatched show all of them together, separated by commas). They are sent as <span className="font-mono">Name: Number</span>. Anything sent in an API request overrides them.
               Empty rows show as N/A in Enquiry Created.
             </p>
           </div>
