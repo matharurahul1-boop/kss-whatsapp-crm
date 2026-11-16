@@ -71,13 +71,40 @@ describe("POST /api/v1/triggers/:slug", () => {
     expect(record).not.toHaveBeenCalled();
   });
 
-  it("sends N/A for contact lines that are not supplied and ignores saved hardcoded contacts", async () => {
-    cfgFind.mockResolvedValue({ ...customerCfg, variables: { "3": "Hardcoded: 111" } });
+  it("sends N/A for contact lines that nobody supplies (request or Team Contacts)", async () => {
+    cfgFind.mockResolvedValue(customerCfg);
     tplFind.mockResolvedValue({ language: "en_US", variableCount: 7 });
     const res = await request(app).post("/api/v1/triggers/enquiry-created?product=Kitchen&contact1=Amit:%209876500001")
       .send({ phone: "919876543210", name: "Rahul" });
     expect(res.status).toBe(200);
     expect(send.mock.calls[0][0].variables).toEqual({ "1": "Rahul", "2": "Kitchen", "3": "Amit: 9876500001", "4": "N/A", "5": "N/A", "6": "N/A", "7": "N/A" });
+  });
+
+  it("fills contact lines from Settings > Team Contacts when the request sends none", async () => {
+    cfgFind.mockResolvedValue(customerCfg);
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 7 });
+    cfgFind.mockImplementation(async ({ where }: { where: { event: string } }) =>
+      where.event === "ENQUIRY_CREATED" ? { ...customerCfg, variables: { "3": "Amit: 7010016537", "4": "Riya: 9876500002" } } : null);
+    const res = await request(app).post("/api/v1/triggers/enquiry-created?product=Kitchen").send({ phone: "919876543210", name: "Rahul" });
+    expect(res.status).toBe(200);
+    expect(send.mock.calls[0][0].variables).toMatchObject({ "3": "Amit: 7010016537", "4": "Riya: 9876500002", "5": "N/A", "6": "N/A", "7": "N/A" });
+  });
+
+  it("contacts=none sends N/A instead of the saved team contacts", async () => {
+    cfgFind.mockResolvedValue(customerCfg);
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 7 });
+    cfgFind.mockResolvedValue({ ...customerCfg, variables: { "3": "Amit: 7010016537" } });
+    await request(app).post("/api/v1/triggers/enquiry-created?contacts=none&product=Kitchen").send({ phone: "919876543210", name: "Rahul" });
+    expect(send.mock.calls[0][0].variables["3"]).toBe("N/A");
+  });
+
+  it("a contact sent in the request wins over the saved team contacts", async () => {
+    cfgFind.mockResolvedValue({ ...customerCfg, templateName: "proforma_invoice_created_customer" });
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 3 });
+    cfgFind.mockImplementation(async ({ where }: { where: { event: string } }) =>
+      where.event === "ENQUIRY_CREATED" ? { ...customerCfg, variables: { "3": "Amit: 7010016537" } } : { ...customerCfg, templateName: "proforma_invoice_created_customer" });
+    await request(app).post("/api/v1/triggers/pi-created").send({ phone: "919876543210", name: "Rahul", project: "PI-1", contact1: "Sam: 9000000000" });
+    expect(send.mock.calls[0][0].variables["3"]).toBe("Sam: 9000000000");
   });
 
   it("accepts every field as URL parameters", async () => {

@@ -5,7 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { getWhatsAppService } from "../../services/whatsapp";
 import { recordOutboundMessage } from "../../services/conversationService";
 import { isValidPhone, normalizePhone } from "../../utils/phone";
-import { recipientFromTemplateName, resolveRecipientPhones, RecipientKind } from "../../services/internalRecipients";
+import { recipientFromTemplateName, resolveRecipientPhones, getTeamContactLines, RecipientKind } from "../../services/internalRecipients";
 
 const router = Router();
 
@@ -37,6 +37,12 @@ const ALIASES: Record<string, Record<string, string>> = {
   "order-dispatched": { order: "2", dispatchDate: "3", contact1: "4" },
 };
 
+// Contact slots (template variable numbers) filled automatically from Settings > Team Contacts
+// when the request does not send them. Send contacts=none to skip this.
+const CONTACT_SLOTS: Record<string, number[]> = {
+  "enquiry-created": [3, 4, 5, 6, 7], "pi-created": [3], "ticket-open": [4], "order-dispatched": [4],
+};
+
 // The enquiry-created contact lines are optional: anything not supplied is sent as "N/A".
 const OPTIONAL_NA: Record<string, number[]> = { "enquiry-created": [3, 4, 5, 6, 7] };
 
@@ -53,6 +59,7 @@ const fireSchema = z.object({
   managerPhones:      phoneList,
   salesManagerPhones: phoneList,
   salespersonPhones:  phoneList, // old name, still accepted
+  contacts:  z.string().optional(), // "none": do not fill contact lines from the app's Sales Managers
   test:      z.union([z.string(), z.boolean()]).optional(), // test mode: send only to the numbers in the request
 }).passthrough();
 
@@ -173,8 +180,8 @@ router.post(
 
     // Variables: {1: name} + saved defaults + body "variables" + shortcuts (product, contact1...) + v1, v2... parameters
     const staticVars: Record<string, string> = cfg.variables && typeof cfg.variables === "object" ? { ...(cfg.variables as Record<string, string>) } : {};
-    // Contact lines must come from the request, never from a saved (hardcoded) default
-    for (const n of OPTIONAL_NA[slug] ?? []) delete staticVars[String(n)];
+    // Contact lines come from the request or Settings > Team Contacts, never from the trigger's own saved defaults
+    for (const n of CONTACT_SLOTS[slug] ?? []) delete staticVars[String(n)];
     const extra: Record<string, string> = {};
     for (const [k, v] of Object.entries(body)) {
       if (typeof v !== "string") continue;
@@ -184,6 +191,13 @@ router.post(
       if (alias) extra[alias] = v;
     }
     let variables: Record<string, string> = { ...(body.name?.trim() ? { "1": body.name.trim() } : {}), ...staticVars, ...(body.variables ?? {}), ...extra };
+    // Contact lines not sent in the request come from Settings > Team Contacts
+    const slots = CONTACT_SLOTS[slug] ?? [];
+    const open = slots.filter((n) => !String(variables[String(n)] ?? "").trim());
+    if (open.length && String(body.contacts ?? "").toLowerCase() !== "none") {
+      const team = await getTeamContactLines();
+      open.forEach((n, i) => { if (team[i]) variables[String(n)] = team[i]; });
+    }
     for (const n of OPTIONAL_NA[slug] ?? []) if (!String(variables[String(n)] ?? "").trim()) variables[String(n)] = "N/A";
 
     // WhatsApp rejects a message whose variable count differs from the template, so check before sending.

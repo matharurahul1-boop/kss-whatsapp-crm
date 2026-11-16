@@ -20,6 +20,16 @@ export async function resolveRecipientPhones(kind: RecipientKind, customerPhone:
   return [...new Set(phones)];
 }
 
+/** Variable numbers of the five contact lines in the Enquiry Created template. */
+export const TEAM_CONTACT_SLOTS = ["3", "4", "5", "6", "7"] as const;
+
+/** The "Name: Number" contact lines saved in Settings > Team Contacts (non-empty ones, in order). */
+export async function getTeamContactLines(): Promise<string[]> {
+  const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event: "ENQUIRY_CREATED" } });
+  const vars = (cfg?.variables && typeof cfg.variables === "object" ? cfg.variables : {}) as Record<string, string>;
+  return TEAM_CONTACT_SLOTS.map((k) => String(vars[k] ?? "").trim()).filter(Boolean);
+}
+
 export interface ContactContext { id: string; name: string; stage?: string; notes?: string | null }
 
 /** Variables for internal templates, filled from the contact. Customer templates only get {{1}} = name. */

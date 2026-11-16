@@ -35,6 +35,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="triggers">
         <TabsList className="flex-wrap">
           <TabsTrigger value="triggers">Triggers</TabsTrigger>
+          <TabsTrigger value="contacts">Team Contacts</TabsTrigger>
           <TabsTrigger value="automation">Stage Automation</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp Config</TabsTrigger>
@@ -43,6 +44,9 @@ export default function SettingsPage() {
 
         <TabsContent value="triggers">
           <TriggersTab />
+        </TabsContent>
+        <TabsContent value="contacts">
+          <TeamContactsTab />
         </TabsContent>
         <TabsContent value="account">
           <AccountTab />
@@ -223,6 +227,48 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  /* ── Team Contacts Tab ───────────────────────────────────────────── */
+  function TeamContactsTab() {
+    const { toast } = useToast();
+    const { data, refetch } = useQuery({
+      queryKey: ["team-contacts"],
+      queryFn: () => api.get<{ contacts: { name: string; number: string }[] }>("/settings/team-contacts"),
+    });
+    const [rows, setRows] = useState<{ name: string; number: string }[] | null>(null);
+    const current = rows ?? data?.contacts ?? Array.from({ length: 5 }, () => ({ name: "", number: "" }));
+
+    const save = useMutation({
+      mutationFn: () => api.put("/settings/team-contacts", { contacts: current }),
+      onSuccess: () => { refetch(); setRows(null); toast({ title: "Team contacts saved", variant: "success" }); },
+      onError: () => toast({ title: "Failed to save", variant: "destructive" }),
+    });
+    const update = (i: number, field: "name" | "number", value: string) =>
+      setRows(current.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+
+    return (
+      <Card>
+        <CardContent className="flex flex-col gap-4 p-6">
+          <div>
+            <p className="font-semibold">Team contact numbers</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              These appear as the "contact our team" lines in customer notifications (Enquiry Created uses all five; PI Created, Ticket Opened and
+              Order Dispatched use the first one). They are sent as <span className="font-mono">Name: Number</span>. Anything sent in an API request overrides them.
+              Empty rows show as N/A in Enquiry Created.
+            </p>
+          </div>
+          {current.map((r, i) => (
+            <div key={i} className="grid grid-cols-[2rem_1fr_1fr] items-center gap-2">
+              <span className="text-sm text-muted-foreground">{i + 1}</span>
+              <Input placeholder="Name (e.g. Amit)" value={r.name} onChange={(e) => update(i, "name", e.target.value)} />
+              <Input placeholder="Number (e.g. 9876500001)" value={r.number} onChange={(e) => update(i, "number", e.target.value)} />
+            </div>
+          ))}
+          <div><Button onClick={() => save.mutate()} disabled={save.isPending}>Save contacts</Button></div>
         </CardContent>
       </Card>
     );

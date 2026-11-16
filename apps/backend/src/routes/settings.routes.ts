@@ -164,4 +164,46 @@ router.get(
   })
 );
 
+/* ── Team contacts: the five "Name: Number" lines used in customer notifications ── */
+const CONTACT_KEYS = ["3", "4", "5", "6", "7"];
+
+router.get(
+  "/team-contacts",
+  asyncHandler(async (_req, res) => {
+    const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event: "ENQUIRY_CREATED" } });
+    const vars = (cfg?.variables && typeof cfg.variables === "object" ? cfg.variables : {}) as Record<string, string>;
+    const contacts = CONTACT_KEYS.map((k) => {
+      const line = String(vars[k] ?? "").trim();
+      const i = line.indexOf(":");
+      return i === -1 ? { name: line, number: "" } : { name: line.slice(0, i).trim(), number: line.slice(i + 1).trim() };
+    });
+    res.json({ success: true, data: { contacts } });
+  })
+);
+
+router.put(
+  "/team-contacts",
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const { contacts } = z.object({
+      contacts: z.array(z.object({ name: z.string().trim().max(60), number: z.string().trim().max(30) })).max(5),
+    }).parse(req.body);
+
+    const existing = await (prisma as any).triggerConfig.findUnique({ where: { event: "ENQUIRY_CREATED" } });
+    const vars: Record<string, string> = { ...((existing?.variables && typeof existing.variables === "object" ? existing.variables : {}) as Record<string, string>) };
+    CONTACT_KEYS.forEach((k, i) => {
+      const c = contacts[i];
+      if (c && (c.name || c.number)) vars[k] = c.number ? `${c.name}: ${c.number}` : c.name;
+      else delete vars[k];
+    });
+
+    await (prisma as any).triggerConfig.upsert({
+      where: { event: "ENQUIRY_CREATED" },
+      update: { variables: vars, updatedAt: new Date() },
+      create: { event: "ENQUIRY_CREATED", label: "Enquiry Created", recipient: "CUSTOMER", templateName: "", language: "en_US", enabled: false, variables: vars },
+    });
+    await recordAudit({ userId: req.user?.userId, action: "TEAM_CONTACTS_UPDATED", description: "Team contact numbers updated" });
+    res.json({ success: true, data: { saved: true } });
+  })
+);
+
 export default router;
