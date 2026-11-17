@@ -44,7 +44,7 @@ POST /api/v1/triggers/{slug}
 `POST /api/v1/triggers/sales-order?phone=9876543210&name=Rahul&v2=SO-1024`.
 `v1`, `v2`, `v3`... are the template variable numbers. URL parameters win over the body.
 
-**Shortcut names for contact details.** All contact details use the same format, `Name: Number`, and are passed per request (nothing is hardcoded in the app):
+**Shortcut names for contact details.** All contact details use the same format, `Name: Number`, and can be sent with each request or kept once in the app (Settings > Team Contacts):
 
 | Trigger | Shortcuts (body or URL) |
 |---|---|
