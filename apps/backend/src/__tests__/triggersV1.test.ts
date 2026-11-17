@@ -87,7 +87,7 @@ describe("POST /api/v1/triggers/:slug", () => {
       where.event === "ENQUIRY_CREATED" ? { ...customerCfg, variables: { "3": "Amit: 7010016537", "4": "Riya: 9876500002" } } : null);
     const res = await request(app).post("/api/v1/triggers/enquiry-created?product=Kitchen").send({ phone: "919876543210", name: "Rahul" });
     expect(res.status).toBe(200);
-    expect(send.mock.calls[0][0].variables).toMatchObject({ "3": "Amit: 7010016537", "4": "Riya: 9876500002", "5": "N/A", "6": "N/A", "7": "N/A" });
+    expect(send.mock.calls[0][0].variables).toMatchObject({ "3": "Amit: +91 7010016537", "4": "Riya: +91 9876500002", "5": "N/A", "6": "N/A", "7": "N/A" });
   });
 
   it("contacts=none sends N/A instead of the saved team contacts", async () => {
@@ -107,7 +107,7 @@ describe("POST /api/v1/triggers/:slug", () => {
     expect(send.mock.calls[0][0].variables["3"]).toBe("Sam: 9000000000");
   });
 
-  const TEAM = { "3": "Prashant Saini: 9899851091", "4": "Arjun Chawla: 9899679669", "5": "Kunal Singh Saini: 8929855811", "6": "Vikas Kharb: 97188 99882", "7": "Vicky Sharma: 92893 66579" };
+  const TEAM = { "3": "Prashant Saini: +91 9899851091", "4": "Arjun Chawla: +91 9899679669", "5": "Kunal Singh Saini: +91 8929855811", "6": "Vikas Kharb: +91 97188 99882", "7": "Vicky Sharma: +91 92893 66579" };
   const ALL = Object.values(TEAM).join(", ");
   const withTeam = (tplName: string) => cfgFind.mockImplementation(async ({ where }: { where: { event: string } }) =>
     where.event === "ENQUIRY_CREATED" ? { ...customerCfg, variables: TEAM } : { ...customerCfg, templateName: tplName });
@@ -118,6 +118,25 @@ describe("POST /api/v1/triggers/:slug", () => {
     const res = await request(app).post("/api/v1/triggers/pi-created").send({ phone: "919876543210", name: "Rahul", project: "PI-1" });
     expect(res.status).toBe(200);
     expect(send.mock.calls[0][0].variables).toEqual({ "1": "Rahul", "2": "PI-1", "3": ALL });
+  });
+
+  it("PI Created with a 7-variable template puts each contact in its own variable, extras N/A", async () => {
+    cfgFind.mockImplementation(async ({ where }: { where: { event: string } }) =>
+      where.event === "ENQUIRY_CREATED" ? { ...customerCfg, variables: { "3": "Amit: 9876500001", "4": "Riya: +91 9876500002" } } : { ...customerCfg, templateName: "proforma_invoice_created_v2_customer" });
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 7 });
+    await request(app).post("/api/v1/triggers/pi-created").send({ phone: "919876543210", name: "Rahul", project: "PI-1" });
+    expect(send.mock.calls[0][0].variables).toEqual({ "1": "Rahul", "2": "PI-1", "3": "Amit: +91 9876500001", "4": "Riya: +91 9876500002", "5": "N/A", "6": "N/A", "7": "N/A" });
+  });
+
+  it("Ticket Opened and Order Dispatched with 8-variable templates use {{4}} to {{8}} for the five contacts", async () => {
+    withTeam("service_ticket_open_v2_customer");
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 8 });
+    await request(app).post("/api/v1/triggers/ticket-open").send({ phone: "919876543210", name: "Rahul", concern: "Door", ticket: "T-1" });
+    expect(send.mock.calls[0][0].variables).toMatchObject({ "3": "T-1", "4": TEAM["3"], "5": TEAM["4"], "6": TEAM["5"], "7": TEAM["6"], "8": TEAM["7"] });
+    send.mockClear();
+    withTeam("order_status_dispatched_v2_customer");
+    await request(app).post("/api/v1/triggers/order-dispatched").send({ phone: "919876543210", name: "Rahul", order: "SO-1", dispatchDate: "12 Nov" });
+    expect(send.mock.calls[0][0].variables).toMatchObject({ "3": "12 Nov", "4": TEAM["3"], "8": TEAM["7"] });
   });
 
   it("Ticket Opened and Order Dispatched put all contacts into {{4}}", async () => {

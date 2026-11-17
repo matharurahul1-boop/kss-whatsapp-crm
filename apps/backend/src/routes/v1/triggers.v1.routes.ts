@@ -32,18 +32,17 @@ const EVENT_SLUG_MAP: Record<string, string> = {
 // Contact details always use the same "Name: Number" format.
 const ALIASES: Record<string, Record<string, string>> = {
   "enquiry-created":  { product: "2", contact1: "3", contact2: "4", contact3: "5", contact4: "6", contact5: "7" },
-  "pi-created":       { project: "2", contact1: "3" },
-  "ticket-open":      { concern: "2", ticket: "3", contact1: "4" },
-  "order-dispatched": { order: "2", dispatchDate: "3", contact1: "4" },
+  "pi-created":       { project: "2", contact1: "3", contact2: "4", contact3: "5", contact4: "6", contact5: "7" },
+  "ticket-open":      { concern: "2", ticket: "3", contact1: "4", contact2: "5", contact3: "6", contact4: "7", contact5: "8" },
+  "order-dispatched": { order: "2", dispatchDate: "3", contact1: "4", contact2: "5", contact3: "6", contact4: "7", contact5: "8" },
 };
 
 // Contacts from Settings > Team Contacts fill the template automatically when the request does not send them
-// (send contacts=none to skip this).
-//  - enquiry-created, template with 5 contact lines {{3}}..{{7}}: one contact per variable
-//  - other contact variables: ALL contacts joined with ", " into that one variable
-//    (a WhatsApp parameter cannot contain line breaks)
-const ENQUIRY_LINE_SLOTS = [3, 4, 5, 6, 7];
-const JOINED_CONTACT_SLOT: Record<string, number> = { "pi-created": 3, "ticket-open": 4, "order-dispatched": 4 };
+// (send contacts=none to skip this). `start` is the first contact variable of the template; the template has either
+//  - five contact variables (start .. start+4): one contact per variable, unused ones become "N/A", or
+//  - one contact variable (start): ALL contacts joined with ", " (a WhatsApp parameter cannot contain line breaks)
+const CONTACT_START: Record<string, number> = { "enquiry-created": 3, "pi-created": 3, "ticket-open": 4, "order-dispatched": 4 };
+const CONTACT_LINES = 5;
 
 const ROLE_LABEL: Record<string, string> = { ADMIN: "admin", MANAGER: "manager", SALESPERSON: "sales manager" };
 
@@ -181,16 +180,16 @@ router.post(
     const staticVars: Record<string, string> = cfg.variables && typeof cfg.variables === "object" ? { ...(cfg.variables as Record<string, string>) } : {};
     // Which variables carry the team contacts for this trigger and template
     const tplVars = tpl?.variableCount ?? 0;
+    const start = CONTACT_START[slug];
     let lineSlots: number[] = [];
     let joinedSlot: number | undefined;
-    if (slug === "enquiry-created") {
-      if (tplVars === 0 || tplVars >= 7) lineSlots = ENQUIRY_LINE_SLOTS; // five contact lines
-      else if (tplVars === 3) joinedSlot = 3;                              // one variable holding all contacts
-    } else {
-      joinedSlot = JOINED_CONTACT_SLOT[slug];
+    if (start) {
+      if (tplVars >= start + CONTACT_LINES - 1) lineSlots = Array.from({ length: CONTACT_LINES }, (_, i) => start + i); // five contact variables
+      else if (tplVars === start) joinedSlot = start;                                                                   // one variable, all contacts
+      else if (tplVars === 0) { if (slug === "enquiry-created") lineSlots = Array.from({ length: CONTACT_LINES }, (_, i) => start + i); else joinedSlot = start; }
     }
     // Contacts come from the request or Settings > Team Contacts, never from the trigger's own saved defaults
-    for (const n of [...ENQUIRY_LINE_SLOTS.filter(() => slug === "enquiry-created"), ...(joinedSlot ? [joinedSlot] : [])]) delete staticVars[String(n)];
+    if (start) for (let i = 0; i < CONTACT_LINES; i++) delete staticVars[String(start + i)];
     const extra: Record<string, string> = {};
     for (const [k, v] of Object.entries(body)) {
       if (typeof v !== "string") continue;
@@ -208,8 +207,8 @@ router.post(
       lineSlots.filter(isEmpty).forEach((n, i) => { if (team[i]) variables[String(n)] = team[i]; });
       if (joinedSlot && isEmpty(joinedSlot) && team.length) variables[String(joinedSlot)] = team.join(", ");
     }
-    // Enquiry Created: contact lines nobody supplied are delivered as N/A
-    if (slug === "enquiry-created") for (const n of ENQUIRY_LINE_SLOTS) if (isEmpty(n)) variables[String(n)] = "N/A";
+    // Contact lines nobody supplied are delivered as N/A
+    for (const n of lineSlots) if (isEmpty(n)) variables[String(n)] = "N/A";
 
     // WhatsApp rejects a message whose variable count differs from the template, so check before sending.
     if (tpl?.variableCount) {

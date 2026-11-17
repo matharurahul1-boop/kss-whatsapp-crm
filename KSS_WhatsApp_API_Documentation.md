@@ -53,7 +53,7 @@ POST /api/v1/triggers/{slug}
 | `ticket-open` | `concern` (= `v2`), `ticket` (= `v3`), `contact1` (= `v4`) |
 | `order-dispatched` | `order` (= `v2`), `dispatchDate` (= `v3`), `contact1` (= `v4`) |
 
-**Contact lines you do not send are filled in by the app.** The app takes the **team contact numbers saved in the app (Settings > Team Contacts, up to 5)**, in the format `Name: Number`. PI Created, Ticket Opened and Order Dispatched put **all** of them, separated by commas, into their one contact variable (`{{3}}` for PI Created, `{{4}}` for Ticket Opened and Order Dispatched). You do not need to send contact details at all. Anything you do send (`contact1`...) is used instead. Enquiry Created lines that remain empty are delivered as `N/A`. To skip the automatic filling and get `N/A`, send `contacts=none`.
+**Contact lines you do not send are filled in by the app.** The app takes the **team contact numbers saved in the app (Settings > Team Contacts, up to 5)**, in the format `Name: Number`. Each contact goes into its own variable, one per line, up to 5: `{{3}}` to `{{7}}` for Enquiry Created and PI Created, `{{4}}` to `{{8}}` for Ticket Opened and Order Dispatched. Unused lines become `N/A`. (If a template has only one contact variable, all contacts are joined with commas into it.) You do not need to send contact details at all. Anything you do send (`contact1`...) is used instead. Enquiry Created lines that remain empty are delivered as `N/A`. To skip the automatic filling and get `N/A`, send `contacts=none`.
 
 Every other template variable must have a value. If any is missing the API answers `400 MISSING_VARIABLES` and lists which ones, without sending anything.
 

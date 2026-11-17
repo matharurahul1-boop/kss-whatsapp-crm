@@ -23,11 +23,21 @@ export async function resolveRecipientPhones(kind: RecipientKind, customerPhone:
 /** Variable numbers of the five contact lines in the Enquiry Created template. */
 export const TEAM_CONTACT_SLOTS = ["3", "4", "5", "6", "7"] as const;
 
+/** "Amit: 9876500001" becomes "Amit: +91 9876500001". Numbers that already carry a country code are left as typed. */
+export function formatContactLine(line: string): string {
+  const i = line.indexOf(":");
+  if (i === -1) return line;
+  const name = line.slice(0, i).trim();
+  const number = line.slice(i + 1).trim();
+  const digits = number.replace(/\D/g, "");
+  return !number.startsWith("+") && digits.length === 10 ? `${name}: +91 ${number}` : `${name}: ${number}`;
+}
+
 /** The "Name: Number" contact lines saved in Settings > Team Contacts (non-empty ones, in order). */
 export async function getTeamContactLines(): Promise<string[]> {
   const cfg = await (prisma as any).triggerConfig.findUnique({ where: { event: "ENQUIRY_CREATED" } });
   const vars = (cfg?.variables && typeof cfg.variables === "object" ? cfg.variables : {}) as Record<string, string>;
-  return TEAM_CONTACT_SLOTS.map((k) => String(vars[k] ?? "").trim()).filter(Boolean);
+  return TEAM_CONTACT_SLOTS.map((k) => formatContactLine(String(vars[k] ?? "").trim())).filter(Boolean);
 }
 
 export interface ContactContext { id: string; name: string; stage?: string; notes?: string | null }
