@@ -61,13 +61,21 @@ export default function TemplatesPage() {
   });
 
   const pullMutation = useMutation({
-    mutationFn: () => api.post<{ pulled: number }>("/templates/pull"),
+    mutationFn: () => api.post<{ pulled: number; metaTotal: number; failed: { name: string; reason: string }[] }>("/templates/pull"),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
-      toast({ title: "Templates pulled", description: `${res.pulled} real template(s) imported from your WhatsApp Business Account.`, variant: "success" });
+      setStatus(""); setCategory(""); setSearch(""); setPage(1);
+      const failedText = res.failed?.length ? ` ${res.failed.length} could not be saved (${res.failed.slice(0, 3).map((f) => f.name).join(", ")}).` : "";
+      toast({
+        title: res.metaTotal === 0 ? "Meta returned no templates" : "Templates pulled",
+        description: res.metaTotal === 0
+          ? "Your WhatsApp Business Account has no templates, or the WABA ID / access token in Settings is wrong."
+          : `${res.pulled} of ${res.metaTotal} template(s) from Meta saved.${failedText}`,
+        variant: res.metaTotal === 0 || res.failed?.length ? "destructive" : "success",
+      });
     },
-    onError: () => {
-      toast({ title: "Pull failed", description: "Could not fetch templates from Meta API.", variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Pull failed", description: err instanceof Error && err.message ? err.message : "Could not fetch templates from Meta API.", variant: "destructive" });
     },
   });
 

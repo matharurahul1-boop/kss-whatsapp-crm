@@ -216,37 +216,22 @@ router.post(
     const metaTemplates = await service.fetchTemplates();
 
     // Update provider content while preserving local prices and relations.
-    const created = await Promise.all(
-      metaTemplates.map((t) =>
-        prisma.whatsAppTemplate.upsert({
-          where: { name: t.name },
-          update: {
-            category: t.category as never, language: t.language,
-            status: (["APPROVED", "REJECTED", "PENDING", "DISABLED"].includes(t.status) ? t.status : "DRAFT") as never,
-            rejectionReason: t.rejectionReason ?? null, headerType: (t.headerType ?? "NONE") as never,
-            headerContent: t.headerContent ?? null, body: t.body, footer: t.footer ?? null, variableCount: t.variableCount,
-          },
-          create: {
-            name: t.name,
-            category: t.category as never,
-            language: t.language,
-            status: (t.status === "APPROVED"
-              ? "APPROVED"
-              : t.status === "REJECTED"
-              ? "REJECTED"
-              : t.status === "PENDING"
-              ? "PENDING"
-              : "DRAFT") as never,
-            rejectionReason: t.rejectionReason ?? null,
-            headerType: (t.headerType ?? "NONE") as never,
-            headerContent: t.headerContent ?? null,
-            body: t.body,
-            footer: t.footer ?? null,
-            variableCount: t.variableCount,
-          },
-        })
-      )
-    );
+    // Templates are saved one by one, so a single problem template cannot hide all the others.
+    const created: { id: string; name: string }[] = [];
+    const failed: { name: string; reason: string }[] = [];
+    for (const t of metaTemplates) {
+      const status = (["APPROVED", "REJECTED", "PENDING", "DISABLED"].includes(t.status) ? t.status : "DRAFT") as never;
+      const data = {
+        category: t.category as never, language: t.language, status,
+        rejectionReason: t.rejectionReason ?? null, headerType: (t.headerType ?? "NONE") as never,
+        headerContent: t.headerContent ?? null, body: t.body, footer: t.footer ?? null, variableCount: t.variableCount,
+      };
+      try {
+        created.push(await prisma.whatsAppTemplate.upsert({ where: { name: t.name }, update: data, create: { name: t.name, ...data }, select: { id: true, name: true } }));
+      } catch (err) {
+        failed.push({ name: t.name, reason: err instanceof Error ? err.message.split("\n").pop() ?? "Could not save" : "Could not save" });
+      }
+    }
 
     await recordAudit({
       userId: req.user?.userId,
@@ -254,7 +239,7 @@ router.post(
       description: `Pulled ${created.length} template(s) from Meta WhatsApp API`,
     });
 
-    res.json({ success: true, data: { pulled: created.length, templates: created } });
+    res.json({ success: true, data: { pulled: created.length, metaTotal: metaTemplates.length, failed, names: created.map((t) => t.name) } });
   })
 );
 

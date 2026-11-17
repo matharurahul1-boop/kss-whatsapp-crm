@@ -58,29 +58,32 @@ export class MetaWhatsAppService implements WhatsAppService {
   }
 
   async fetchTemplates(): Promise<MetaTemplate[]> {
-    const res = await fetch(
-      `${GRAPH_BASE}/${env.wabaId}/message_templates?fields=name,category,language,status,rejected_reason,components&limit=100`,
-      { headers: { Authorization: `Bearer ${env.accessToken}` } }
-    );
-    if (!res.ok) throw new Error(`Failed to fetch templates: ${res.status} ${await res.text()}`);
-
-    const data = (await res.json()) as {
-      data: Array<{
-        name: string;
-        category: string;
-        language: string;
-        status: string;
-        rejected_reason?: string;
-        components?: Array<{ type: string; format?: string; text?: string; example?: { header_text?: string[] } }>;
-      }>;
+    type MetaRow = {
+      name: string;
+      category: string;
+      language: string;
+      status: string;
+      rejected_reason?: string;
+      components?: Array<{ type: string; format?: string; text?: string; example?: { header_text?: string[] } }>;
     };
+    // Meta returns templates in pages; follow every page so none are missed.
+    const rows: MetaRow[] = [];
+    let url: string | undefined = `${GRAPH_BASE}/${env.wabaId}/message_templates?fields=name,category,language,status,rejected_reason,components&limit=100`;
+    for (let page = 0; url && page < 20; page++) {
+      const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${env.accessToken}` } });
+      if (!res.ok) throw new Error(`Failed to fetch templates: ${res.status} ${await res.text()}`);
+      const data = (await res.json()) as { data: MetaRow[]; paging?: { next?: string } };
+      rows.push(...(data.data ?? []));
+      url = data.paging?.next;
+    }
 
-    return data.data.map((t) => {
+    return rows.map((t) => {
       const header = t.components?.find((c) => c.type === "HEADER");
       const body = t.components?.find((c) => c.type === "BODY");
       const footer = t.components?.find((c) => c.type === "FOOTER");
       const bodyText = body?.text ?? "";
-      const variableCount = (bodyText.match(/\{\{\d+\}\}/g) ?? []).length;
+      // highest {{n}} used (a repeated variable must not be counted twice)
+      const variableCount = Math.max(0, ...(bodyText.match(/\{\{\d+\}\}/g) ?? []).map((m) => Number(m.replace(/\D/g, ""))));
 
       let headerType = "NONE";
       let headerContent: string | null = null;
