@@ -43,7 +43,7 @@
       }
     },
     {
-      "name": "Enquiry Created  [enquiry-created]",
+      "name": "Enquiry Created  [enquiry-created]  A: all Team Contacts",
       "request": {
         "method": "POST",
         "header": [
@@ -76,7 +76,40 @@
       }
     },
     {
-      "name": "PI (Proforma Invoice) Created  [pi-created]",
+      "name": "Enquiry Created  [enquiry-created]  B: own contacts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/enquiry-created",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "enquiry-created"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"product\": \"Modular Kitchen\",\n  \"contact1\": \"Amit: +91 9876500001\",\n  \"contact2\": \"Riya: +91 9876500002\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PI (Proforma Invoice) Created  [pi-created]  A: all Team Contacts",
       "request": {
         "method": "POST",
         "header": [
@@ -100,6 +133,39 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"project\": \"PI-1024\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PI (Proforma Invoice) Created  [pi-created]  B: own contacts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/pi-created",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "pi-created"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"project\": \"PI-1024\",\n  \"contact1\": \"Amit: +91 9876500001\",\n  \"contact2\": \"Riya: +91 9876500002\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -175,7 +241,7 @@
       }
     },
     {
-      "name": "Ticket Opened  [ticket-open]",
+      "name": "Ticket Opened  [ticket-open]  A: all Team Contacts",
       "request": {
         "method": "POST",
         "header": [
@@ -199,6 +265,39 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"concern\": \"Door alignment issue\",\n  \"ticket\": \"TKT-501\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Ticket Opened  [ticket-open]  B: own contacts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/ticket-open",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "ticket-open"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"concern\": \"Door alignment issue\",\n  \"ticket\": \"TKT-501\",\n  \"contact1\": \"Amit: +91 9876500001\",\n  \"contact2\": \"Riya: +91 9876500002\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -307,7 +406,7 @@
       }
     },
     {
-      "name": "Order Status - Dispatched  [order-dispatched]",
+      "name": "Order Status - Dispatched  [order-dispatched]  A: all Team Contacts",
       "request": {
         "method": "POST",
         "header": [
@@ -331,6 +430,39 @@
         "body": {
           "mode": "raw",
           "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"order\": \"SO-1024\",\n  \"dispatchDate\": \"12 Nov 2026\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Order Status - Dispatched  [order-dispatched]  B: own contacts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/triggers/order-dispatched",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "triggers",
+            "order-dispatched"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"919876543210\",\n  \"name\": \"Rahul Sharma\",\n  \"order\": \"SO-1024\",\n  \"dispatchDate\": \"12 Nov 2026\",\n  \"contact1\": \"Amit: +91 9876500001\",\n  \"contact2\": \"Riya: +91 9876500002\"\n}",
           "options": {
             "raw": {
               "language": "json"
