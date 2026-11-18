@@ -139,6 +139,24 @@ describe("POST /api/v1/triggers/:slug", () => {
     expect(send.mock.calls[0][0].variables).toMatchObject({ "3": "12 Nov", "4": TEAM["3"], "8": TEAM["7"] });
   });
 
+  it("contacts sent in the request are the only ones used; the other lines become N/A, not Team Contacts", async () => {
+    withTeam("proforma_invoice_created_v2_customer");
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 7 });
+    await request(app).post("/api/v1/triggers/pi-created").send({
+      phone: "919876543210", name: "Rahul", project: "PI-1", contact1: "Amit: +91 9876500001", contact2: "Riya: +91 9876500002",
+    });
+    expect(send.mock.calls[0][0].variables).toEqual({
+      "1": "Rahul", "2": "PI-1", "3": "Amit: +91 9876500001", "4": "Riya: +91 9876500002", "5": "N/A", "6": "N/A", "7": "N/A",
+    });
+  });
+
+  it("with no contacts in the request, all five Team Contacts are used", async () => {
+    withTeam("proforma_invoice_created_v2_customer");
+    tplFind.mockResolvedValue({ language: "en_US", variableCount: 7 });
+    await request(app).post("/api/v1/triggers/pi-created").send({ phone: "919876543210", name: "Rahul", project: "PI-1" });
+    expect(send.mock.calls[0][0].variables).toEqual({ "1": "Rahul", "2": "PI-1", ...TEAM });
+  });
+
   it("Ticket Opened and Order Dispatched put all contacts into {{4}}", async () => {
     withTeam("service_ticket_open_customer");
     tplFind.mockResolvedValue({ language: "en_US", variableCount: 4 });

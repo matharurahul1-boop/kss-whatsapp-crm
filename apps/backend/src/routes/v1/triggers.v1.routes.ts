@@ -199,13 +199,15 @@ router.post(
       if (alias) extra[alias] = v;
     }
     let variables: Record<string, string> = { ...(body.name?.trim() ? { "1": body.name.trim() } : {}), ...staticVars, ...(body.variables ?? {}), ...extra };
-    // Contacts not sent in the request come from Settings > Team Contacts
+    // Contacts: if the request sends any (contact1, contact2...), only those are used and the rest become N/A.
+    // If it sends none, ALL contacts saved in Settings > Team Contacts are used.
     const useSaved = String(body.contacts ?? "").toLowerCase() !== "none";
     const isEmpty = (n: number) => !String(variables[String(n)] ?? "").trim();
-    if (useSaved && (lineSlots.some(isEmpty) || (joinedSlot && isEmpty(joinedSlot)))) {
+    const sentByRequest = lineSlots.some((n) => !isEmpty(n)) || (joinedSlot !== undefined && !isEmpty(joinedSlot));
+    if (useSaved && !sentByRequest && (lineSlots.length || joinedSlot)) {
       const team = await getTeamContactLines();
-      lineSlots.filter(isEmpty).forEach((n, i) => { if (team[i]) variables[String(n)] = team[i]; });
-      if (joinedSlot && isEmpty(joinedSlot) && team.length) variables[String(joinedSlot)] = team.join(", ");
+      lineSlots.forEach((n, i) => { if (team[i]) variables[String(n)] = team[i]; });
+      if (joinedSlot && team.length) variables[String(joinedSlot)] = team.join(", ");
     }
     // Contact lines nobody supplied are delivered as N/A
     for (const n of lineSlots) if (isEmpty(n)) variables[String(n)] = "N/A";
